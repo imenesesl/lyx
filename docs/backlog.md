@@ -103,6 +103,22 @@ Status: `proposed` | `architect-review` | `approved` | `in-progress` | `done` | 
 **Technical scope**: Vite Plugin, Shell (MFESlot adapter), SDK, CLI
 **Review roles**: Architect (adapter pattern design), Staff (bundle size impact)
 
+### P1-004: Supabase Compatibility
+
+**Status**: proposed
+**Competitive gap**: No MFE framework integrates with BaaS platforms. Teams on Supabase must wire auth, storage, and database manually. First-class support would dramatically lower Lyx's barrier to entry and tap into Supabase's massive developer community.
+**Description**: Pluggable backend adapter layer so Lyx can use Supabase Auth (instead of custom JWT), Supabase Storage (instead of S3/MinIO), and Supabase Database (PostgreSQL, instead of MongoDB) as its persistence and identity layer.
+**Acceptance criteria**:
+- Admin API supports Supabase as an alternative backend via env-based adapter selection (`LYX_BACKEND=supabase`)
+- Auth: login/register/session via Supabase Auth (RLS-aware), with JWT forwarding to the Admin API
+- Storage: MFE bundles stored in Supabase Storage buckets instead of S3/MinIO
+- Database: app, MFE, layout, and metric data persisted in Supabase PostgreSQL (via Prisma or Supabase JS client) instead of MongoDB/Mongoose
+- CLI: `lyx init` detects Supabase config and scaffolds accordingly
+- Docker Compose profile for local dev with Supabase (`supabase start` or self-hosted)
+- Zero changes required for MFE developers — the adapter is transparent to the runtime
+**Technical scope**: Admin API (adapter layer), CLI, Docker Compose, docs
+**Review roles**: Architect (adapter pattern, data migration strategy), Staff (Supabase SDK integration), QA (parity testing with MongoDB backend)
+
 ---
 
 ## P2 — Strategic Advantage

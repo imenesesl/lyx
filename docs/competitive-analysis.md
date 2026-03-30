@@ -133,6 +133,16 @@ Lyx occupies a unique position in the micro frontend space: it is the only frame
 | **Not a competitor because** | No MFE orchestration or cross-repo runtime composition. |
 | **Pricing** | Usage-based AWS billing. |
 
+### Supabase
+
+| Dimension | Assessment |
+|-----------|------------|
+| **Overlap** | Auth, database (PostgreSQL), storage, real-time subscriptions, edge functions — full BaaS alternative to Lyx's MongoDB + MinIO/S3 + custom JWT stack. |
+| **Strengths** | Massive developer adoption, excellent DX, self-hostable, built-in Row Level Security, real-time subscriptions, generous free tier, TypeScript SDK with auto-generated types. |
+| **Not a competitor because** | BaaS platform, not an MFE orchestration framework. No shell, no MFE routing, no layout engine, no Module Federation. |
+| **Why compatibility matters** | Teams already on Supabase would adopt Lyx faster if the platform could use Supabase Auth instead of custom JWT, Supabase Storage instead of S3/MinIO, and Supabase Database instead of MongoDB. Reduces infra setup from "Docker + Mongo + MinIO" to "connect your Supabase project." |
+| **Pricing** | Open source (MIT). Supabase Cloud free tier + Pro ($25/mo) + Team/Enterprise. |
+
 ### Backstage (Spotify)
 
 | Dimension | Assessment |
@@ -185,6 +195,8 @@ Legend: **Lead** = best-in-class, **Match** = competitive parity, **Partial** = 
 7. **Testing across MFE boundaries** — E2E across remotes, visual regression with version skew, and contract tests for federated imports are notoriously painful.
 
 8. **Mobile and native** — Most MFE stacks target web SPA. Embedding in native WebViews with consistent contracts is ad hoc.
+
+9. **BaaS integration (Supabase/Firebase)** — No MFE framework provides first-class integration with popular Backend-as-a-Service platforms. Teams using Supabase must manually wire auth, storage, and database. A pluggable backend adapter layer would dramatically lower the barrier to entry and tap into Supabase's massive developer community.
 
 ---
 
