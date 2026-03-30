@@ -474,9 +474,12 @@ Each account gets a default ID (MongoDB ObjectId). You can set a custom alias in
 | `docs/architecture.md` | System design, data flow, decision records |
 | `docs/errors.md` | Error knowledge base with cause/fix/prevention |
 | `docs/features.md` | Complete feature inventory |
-| `docs/roles.md` | Architect/Staff/Dev/QA review framework |
-| `.cursor/rules/` | AI agent conventions (7 rule files) |
-| `.cursor/skills/` | AI agent expert workflows (8 skills) |
+| `docs/roles.md` | 6-role decision framework (PO, PM, Architect, Staff, Dev, QA) |
+| `docs/backlog.md` | Product backlog with P0-P3 priorities and competitive justification |
+| `docs/competitive-analysis.md` | Market analysis vs 8 direct + 4 adjacent competitors |
+| `docs/workplan.md` | Sprint execution tracking with role-based review pipeline |
+| `.cursor/rules/` | AI agent conventions (8 rule files) |
+| `.cursor/skills/` | AI agent expert workflows (10 skills) |
 
 ---
 

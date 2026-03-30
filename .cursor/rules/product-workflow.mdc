@@ -1,0 +1,55 @@
+---
+description: Product workflow — feature requests, backlog management, and role-based execution pipeline
+alwaysApply: true
+---
+
+# Product Workflow
+
+## Feature Request Pipeline
+
+Every new feature or significant change must follow this pipeline:
+
+1. **Product Owner analyzes** → Check `docs/competitive-analysis.md`, create entry in `docs/backlog.md`
+2. **Project Manager routes** → Send to Architect + Staff for analysis
+3. **Architect reviews** → Feasibility, system impact, breaking changes, risks
+4. **Staff/Principal reviews** → Approach, effort estimate, technical risks
+5. **PM approves** → Add to `docs/workplan.md` with full analysis
+6. **Engineer implements** → Code, tests, PR
+7. **QA validates** → Acceptance criteria, regressions, edge cases
+8. **Documentation updated** → features.md, errors.md, README, rules, skills
+9. **PO signs off** → Backlog item marked done
+
+## Rules
+
+- **Never skip analysis for P0/P1 items** — both Architect and Staff must review
+- **P2/P3 items** may have lighter analysis but still need backlog entries
+- **Every completed item** must have documentation updated before marking done
+- **Backlog is the source of truth** — `docs/backlog.md` is always current
+- **Competitive analysis drives priority** — check `docs/competitive-analysis.md` before proposing features
+
+## Role Files
+
+| Role | Skill | Docs |
+|------|-------|------|
+| Product Owner | `.cursor/skills/lyx-product-owner/SKILL.md` | `docs/backlog.md`, `docs/competitive-analysis.md` |
+| Project Manager | `.cursor/skills/lyx-project-manager/SKILL.md` | `docs/workplan.md` |
+| Architect | (inline in `docs/roles.md`) | `docs/architecture.md` |
+| Staff Engineer | (inline in `docs/roles.md`) | `.cursor/rules/` |
+| Developer | (inline in `docs/roles.md`) | `docs/features.md` |
+| QA | (inline in `docs/roles.md`) | `docs/errors.md` |
+
+## Priority Quick Reference
+
+| Priority | Meaning | Analysis required |
+|----------|---------|-------------------|
+| P0 | Critical differentiator — market gap | Architect + Staff + PO sign-off |
+| P1 | Competitive parity — leaders have it | Architect + Staff |
+| P2 | Strategic advantage — unique to Lyx | Staff review minimum |
+| P3 | Nice to have | Backlog entry sufficient |
+
+## When Acting as Agent
+
+- If the user requests a new feature, first check if it exists in `docs/backlog.md`
+- If not, create a backlog entry with competitive justification before implementing
+- For P0/P1 items, always document the Architect and Staff analysis in `docs/workplan.md`
+- After implementing any feature, update the backlog status and documentation

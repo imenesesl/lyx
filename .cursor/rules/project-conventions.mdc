@@ -74,17 +74,31 @@ If expired or missing, guide the user to: `lyx aws login`
 - `docs/features.md` — complete feature inventory (SDK, CLI, Shell, API, UI, Infra)
 - `docs/errors.md` — error knowledge base with cause/fix/prevention
 - `docs/architecture.md` — system design, data flow, decision records
-- `docs/roles.md` — role-based review framework (Architect, Staff, Dev, QA)
+- `docs/roles.md` — 6-role decision framework (PO, PM, Architect, Staff, Dev, QA)
+- `docs/backlog.md` — product backlog with P0-P3 priorities (owned by PO)
+- `docs/competitive-analysis.md` — market analysis vs competitors (owned by PO)
+- `docs/workplan.md` — sprint execution tracking (owned by PM)
+
+## Product Workflow
+
+New features follow the pipeline defined in `.cursor/rules/product-workflow.mdc`:
+
+1. PO analyzes request against competitive landscape
+2. PM routes to Architect + Staff for analysis
+3. Engineer implements after approval
+4. QA validates, docs updated, PO signs off
 
 ## Expert Skills (`.cursor/skills/`)
 
 | Skill | Domain |
 |-------|--------|
+| `lyx-product-owner` | Competitive analysis, backlog management, feature prioritization |
+| `lyx-project-manager` | Sprint planning, role coordination, execution tracking |
 | `lyx-mfe-workflow` | Creating and deploying MFEs |
 | `lyx-deploy` | AWS deployment and local platform |
 | `lyx-debug` | Error diagnosis and resolution |
 | `lyx-sdk-expert` | SDK internals (events, state, navigation, loading) |
-| `lyx-cli-expert` | CLI commands (init, create, deploy, login, view) |
+| `lyx-cli-expert` | CLI commands (init, create, deploy, login, view, aws) |
 | `lyx-shell-expert` | Shell, layouts, Module Federation, SSR |
 | `lyx-admin-api-expert` | API routes, models, auth, storage, publish flow |
 | `lyx-infra-expert` | Docker, Nginx, AWS, CI/CD pipeline |
