@@ -23,7 +23,7 @@ Status: `proposed` | `architect-review` | `approved` | `in-progress` | `done` | 
 
 ### P0-001: MFE Contract Testing
 
-**Status**: in-progress
+**Status**: done
 **Competitive gap**: No competitor validates that MFE event schemas remain compatible across independent release cadences.
 **Description**: Automated validation that MFE events (`emit`/`on` contracts), shared state keys, and exposed props don't break consumers when a producer MFE is updated independently.
 **Acceptance criteria**:
@@ -205,7 +205,8 @@ Status: `proposed` | `architect-review` | `approved` | `in-progress` | `done` | 
 
 ## Completed Items
 
-_No items completed yet._
+### P0-001: MFE Contract Testing — Completed 2026-03-24
+Automated validation of MFE event and shared state contracts via `lyx test` and `lyx deploy`.
 
 ---
 

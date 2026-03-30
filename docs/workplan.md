@@ -33,9 +33,9 @@ Backlog (PO) → PM selects → Architect review → Staff/Principal review → 
 
 - **Backlog ref**: P0-001
 - **Priority**: P0
-- **Status**: in-progress
+- **Status**: done
 - **Started**: 2026-03-24
-- **Target**: 2026-03-24
+- **Completed**: 2026-03-24
 
 #### Architect Analysis
 - **Feasibility**: Yes — contracts declared in existing `mfe.config.json`, validation as pure function
