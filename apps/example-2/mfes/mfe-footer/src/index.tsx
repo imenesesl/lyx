@@ -74,7 +74,7 @@ function PixelMiniCat({ cat, frame }: { cat: RunningCat; frame: number }) {
   );
 }
 
-function MichisFooter() {
+function MfeFooter() {
   const [frame, setFrame] = useState(0);
   const [cats, setCats] = useState<RunningCat[]>([]);
   const nextId = useRef(0);
@@ -184,10 +184,10 @@ function MichisFooter() {
         color: "#4a3f6b80",
         letterSpacing: "1px",
       }}>
-        MICHIS HOUSE © 2026
+        EXAMPLE 2 © 2026
       </div>
     </div>
   );
 }
 
-export default MichisFooter;
+export default MfeFooter;

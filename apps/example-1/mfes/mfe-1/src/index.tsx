@@ -237,7 +237,7 @@ function ColorPicker({ selected, onSelect }: { selected: number; onSelect: (i: n
   );
 }
 
-function PickACat() {
+function Mfe1() {
   const [stats, setStats] = useState<Stats>({ hunger: 70, happiness: 60, energy: 80 });
   const [mood, setMood] = useState<Mood>("neutral");
   const [frame, setFrame] = useState(0);
@@ -502,4 +502,4 @@ function PickACat() {
   );
 }
 
-export default PickACat;
+export default Mfe1;

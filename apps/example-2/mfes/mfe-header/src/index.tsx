@@ -114,7 +114,7 @@ function DayNightToggle({ isNight, onToggle }: { isNight: boolean; onToggle: () 
   );
 }
 
-function MichisHeader() {
+function MfeHeader() {
   const [time, setTime] = useState(new Date());
   const [catFace, setCatFace] = useState(0);
   const [isNight, setIsNight] = useState(false);
@@ -194,7 +194,7 @@ function MichisHeader() {
             {faces[catFace]}
           </span>
           <div>
-            <div style={{ fontSize: "10px", color: "#e0d5f5", letterSpacing: "2px" }}>MICHIS HOUSE</div>
+            <div style={{ fontSize: "10px", color: "#e0d5f5", letterSpacing: "2px" }}>EXAMPLE 2</div>
             <div style={{ fontSize: "6px", color: "#8a7fad", marginTop: "2px", letterSpacing: "1px" }}>VIRTUAL PET ARCADE</div>
           </div>
         </div>
@@ -223,4 +223,4 @@ function MichisHeader() {
   );
 }
 
-export default MichisHeader;
+export default MfeHeader;
