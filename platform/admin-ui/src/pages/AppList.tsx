@@ -50,6 +50,7 @@ export function AppList() {
 
   const selectedLayoutData = layouts.find((l) => l._id === selectedLayout);
   const ns = account?.alias || account?.id;
+  const shellBase = account?.shellUrl || "";
 
   return (
     <div>
@@ -125,7 +126,7 @@ export function AppList() {
                   <div style={{ fontWeight: 600, fontSize: 15 }}>{app.name}</div>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace", marginTop: 2 }}>/{ns}/{app.slug}/</div>
                 </div>
-                <a href={`/${ns}/${app.slug}/`} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-xs" onClick={(e) => e.stopPropagation()}>
+                <a href={`${shellBase}/${ns}/${app.slug}/`} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-xs" onClick={(e) => e.stopPropagation()}>
                   Preview ↗
                 </a>
               </div>

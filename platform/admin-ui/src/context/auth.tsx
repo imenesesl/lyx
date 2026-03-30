@@ -6,6 +6,7 @@ interface Account {
   email: string;
   name: string;
   alias: string | null;
+  shellUrl: string;
 }
 
 interface AuthContextValue {

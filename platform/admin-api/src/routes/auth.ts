@@ -25,7 +25,7 @@ router.post("/register", async (req, res) => {
     const token = signToken({ accountId: account._id.toString(), email: account.email });
     res.status(201).json({
       token,
-      account: { id: account._id, email: account.email, name: account.name, alias: account.alias ?? null },
+      account: { id: account._id, email: account.email, name: account.name, alias: account.alias ?? null, shellUrl: account.shellUrl ?? "" },
     });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
@@ -55,7 +55,7 @@ router.post("/login", async (req, res) => {
     const token = signToken({ accountId: account._id.toString(), email: account.email });
     res.json({
       token,
-      account: { id: account._id, email: account.email, name: account.name, alias: account.alias ?? null },
+      account: { id: account._id, email: account.email, name: account.name, alias: account.alias ?? null, shellUrl: account.shellUrl ?? "" },
     });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
@@ -69,7 +69,7 @@ router.get("/me", authRequired, async (req, res) => {
       res.status(404).json({ error: "Account not found" });
       return;
     }
-    res.json({ id: account._id, email: account.email, name: account.name, alias: account.alias ?? null });
+    res.json({ id: account._id, email: account.email, name: account.name, alias: account.alias ?? null, shellUrl: account.shellUrl ?? "" });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }
@@ -125,12 +125,44 @@ router.put("/alias", authRequired, async (req, res) => {
       return;
     }
 
-    res.json({ id: account._id, email: account.email, name: account.name, alias: account.alias ?? null });
+    res.json({ id: account._id, email: account.email, name: account.name, alias: account.alias ?? null, shellUrl: account.shellUrl ?? "" });
   } catch (err: any) {
     if (err.code === 11000) {
       res.status(409).json({ error: "That alias is already taken" });
       return;
     }
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/shell-url", authRequired, async (req, res) => {
+  try {
+    const { shellUrl } = req.body;
+    if (shellUrl === undefined || typeof shellUrl !== "string") {
+      res.status(400).json({ error: "shellUrl is required" });
+      return;
+    }
+
+    const clean = shellUrl.trim().replace(/\/+$/, "");
+
+    if (clean && !/^https?:\/\/.+/i.test(clean)) {
+      res.status(400).json({ error: "shellUrl must be a valid URL starting with http:// or https://" });
+      return;
+    }
+
+    const account = await Account.findByIdAndUpdate(
+      req.auth!.accountId,
+      { shellUrl: clean },
+      { new: true }
+    ).select("-passwordHash");
+
+    if (!account) {
+      res.status(404).json({ error: "Account not found" });
+      return;
+    }
+
+    res.json({ id: account._id, email: account.email, name: account.name, alias: account.alias ?? null, shellUrl: account.shellUrl ?? "" });
+  } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }
 });

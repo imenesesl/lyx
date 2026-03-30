@@ -95,6 +95,8 @@ export function AppDetail() {
   if (!app || !draft) return <PageSkeleton />;
 
   const ns = account?.alias || app.accountId;
+  const shellBase = account?.shellUrl || "";
+  const previewUrl = `${shellBase}/${ns}/${app.slug}/`;
 
   return (
     <div>
@@ -104,7 +106,7 @@ export function AppDetail() {
           <p className="page-subtitle" style={{ fontFamily: "monospace", fontSize: 12 }}>/{ns}/{app.slug}/</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <a href={`/${ns}/${app.slug}/`} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm" aria-disabled={publishedVersions.length === 0} onClick={publishedVersions.length === 0 ? (e: React.MouseEvent) => e.preventDefault() : undefined}>
+          <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm" aria-disabled={publishedVersions.length === 0} onClick={publishedVersions.length === 0 ? (e: React.MouseEvent) => e.preventDefault() : undefined}>
             Preview ↗
           </a>
           <button className="btn btn-secondary btn-sm" onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save Draft"}</button>

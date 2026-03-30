@@ -9,9 +9,15 @@ export function Settings() {
   const [aliasSaving, setAliasSaving] = useState(false);
   const [aliasSuccess, setAliasSuccess] = useState(false);
 
+  const [shellUrlInput, setShellUrlInput] = useState("");
+  const [shellUrlError, setShellUrlError] = useState("");
+  const [shellUrlSaving, setShellUrlSaving] = useState(false);
+  const [shellUrlSuccess, setShellUrlSuccess] = useState(false);
+
   useEffect(() => {
     if (account?.alias) setAliasInput(account.alias);
-  }, [account?.alias]);
+    if (account?.shellUrl) setShellUrlInput(account.shellUrl);
+  }, [account?.alias, account?.shellUrl]);
 
   async function handleAliasSave() {
     setAliasError("");
@@ -26,6 +32,22 @@ export function Settings() {
       setAliasError(err.message);
     } finally {
       setAliasSaving(false);
+    }
+  }
+
+  async function handleShellUrlSave() {
+    setShellUrlError("");
+    setShellUrlSuccess(false);
+    setShellUrlSaving(true);
+    try {
+      await api.put("/auth/shell-url", { shellUrl: shellUrlInput });
+      await refreshAccount();
+      setShellUrlSuccess(true);
+      setTimeout(() => setShellUrlSuccess(false), 3000);
+    } catch (err: any) {
+      setShellUrlError(err.message);
+    } finally {
+      setShellUrlSaving(false);
     }
   }
 
@@ -92,6 +114,43 @@ export function Settings() {
           {aliasSuccess && (
             <p style={{ color: "var(--success)", fontSize: 12, marginTop: 4 }}>
               Alias updated — your apps are now at /{aliasInput}/
+            </p>
+          )}
+        </div>
+
+        <div className="card" style={{ marginBottom: 16 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Shell URL</h3>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
+            Set the base URL of your SSR/Shell service. Preview links will point to this domain instead of the Admin UI domain.
+            Required when Admin UI and Shell run on different domains (e.g. separate App Runner services).
+          </p>
+
+          <div className="form-group" style={{ marginBottom: 8 }}>
+            <label>Shell Service URL</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                className="input"
+                value={shellUrlInput}
+                onChange={(e) => setShellUrlInput(e.target.value.trim())}
+                placeholder="https://abc123.us-west-2.awsapprunner.com"
+                style={{ fontFamily: "monospace", fontSize: 12 }}
+              />
+              <button
+                className="btn btn-primary"
+                onClick={handleShellUrlSave}
+                disabled={shellUrlSaving || shellUrlInput === (account?.shellUrl ?? "")}
+                style={{ flexShrink: 0 }}
+              >
+                {shellUrlSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+            <p className="form-hint">Full URL including https://. Leave empty to use same domain as Admin.</p>
+          </div>
+
+          {shellUrlError && <p className="error-text">{shellUrlError}</p>}
+          {shellUrlSuccess && (
+            <p style={{ color: "var(--success)", fontSize: 12, marginTop: 4 }}>
+              Shell URL updated — preview links will now point to {shellUrlInput || "same domain"}
             </p>
           )}
         </div>
