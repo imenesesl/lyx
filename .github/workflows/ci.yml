@@ -12,6 +12,10 @@ on:
         type: boolean
         default: true
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   AWS_REGION_VALUE: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
@@ -191,15 +195,39 @@ jobs:
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
       - name: Deploy admin-api
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          REGION: ${{ env.AWS_REGION_VALUE }}
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           BUCKET="lyx-bundles-${ACCOUNT_ID}-production"
+
+          ENV_VARS=$(jq -nc \
+            --arg mongo "$MONGO_URI" \
+            --arg jwt "$JWT_SECRET" \
+            --arg bucket "$BUCKET" \
+            --arg region "$REGION" \
+            '{
+              NODE_ENV: "production",
+              PORT: "4000",
+              MONGO_URI: $mongo,
+              MINIO_ENDPOINT: "s3",
+              MINIO_PORT: "443",
+              MINIO_ACCESS_KEY: "none",
+              MINIO_SECRET_KEY: "none",
+              MINIO_USE_SSL: "true",
+              MINIO_BUCKET: $bucket,
+              JWT_SECRET: $jwt,
+              CORS_ORIGIN: "*",
+              AWS_REGION: $region
+            }')
 
           bash scripts/ensure-service.sh \
             "lyx-production-admin-api" \
             "$IMAGE" \
             "4000" \
-            "{\"NODE_ENV\":\"production\",\"PORT\":\"4000\",\"MONGO_URI\":\"${{ secrets.MONGO_URI }}\",\"MINIO_ENDPOINT\":\"s3\",\"MINIO_PORT\":\"443\",\"MINIO_ACCESS_KEY\":\"none\",\"MINIO_SECRET_KEY\":\"none\",\"MINIO_USE_SSL\":\"true\",\"MINIO_BUCKET\":\"${BUCKET}\",\"JWT_SECRET\":\"${{ secrets.JWT_SECRET }}\",\"CORS_ORIGIN\":\"*\",\"AWS_REGION\":\"${{ env.AWS_REGION_VALUE }}\"}" \
+            "$ENV_VARS" \
             "true"
 
           echo "✅ admin-api deployed"
@@ -239,8 +267,10 @@ jobs:
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
       - name: Deploy admin-ui
+        env:
+          REGION: ${{ env.AWS_REGION_VALUE }}
         run: |
-          API_URL=$(aws apprunner list-services --region "${{ env.AWS_REGION_VALUE }}" \
+          API_URL=$(aws apprunner list-services --region "$REGION" \
             --query "ServiceSummaryList[?contains(ServiceName,'admin-api')].ServiceUrl" \
             --output text 2>/dev/null || echo "")
 
@@ -249,11 +279,13 @@ jobs:
             echo "⚠️  admin-api not found yet, using placeholder"
           fi
 
+          ENV_VARS=$(jq -nc --arg api "https://${API_URL}" '{API_URL: $api}')
+
           bash scripts/ensure-service.sh \
             "lyx-production-admin-ui" \
             "$IMAGE" \
             "4001" \
-            "{\"API_URL\":\"https://${API_URL}\"}" \
+            "$ENV_VARS" \
             "false"
 
           echo "✅ admin-ui deployed"
@@ -304,11 +336,13 @@ jobs:
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
       - name: Deploy SSR
+        env:
+          REGION: ${{ env.AWS_REGION_VALUE }}
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           BUCKET="lyx-bundles-${ACCOUNT_ID}-production"
 
-          API_URL=$(aws apprunner list-services --region "${{ env.AWS_REGION_VALUE }}" \
+          API_URL=$(aws apprunner list-services --region "$REGION" \
             --query "ServiceSummaryList[?contains(ServiceName,'admin-api')].ServiceUrl" \
             --output text 2>/dev/null || echo "")
 
@@ -317,11 +351,22 @@ jobs:
             echo "⚠️  admin-api not found yet, using placeholder"
           fi
 
+          ENV_VARS=$(jq -nc \
+            --arg api "https://${API_URL}" \
+            --arg bucket "$BUCKET" \
+            --arg region "$REGION" \
+            '{
+              API_URL: $api,
+              PORT: "4002",
+              S3_BUCKET: $bucket,
+              AWS_REGION: $region
+            }')
+
           bash scripts/ensure-service.sh \
             "lyx-production-ssr" \
             "$IMAGE" \
             "4002" \
-            "{\"API_URL\":\"https://${API_URL}\",\"PORT\":\"4002\",\"S3_BUCKET\":\"${BUCKET}\",\"AWS_REGION\":\"${{ env.AWS_REGION_VALUE }}\"}" \
+            "$ENV_VARS" \
             "true"
 
           echo "✅ ssr deployed"
