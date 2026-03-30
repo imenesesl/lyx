@@ -23,6 +23,22 @@ lyx deploy                   # builds, versions, uploads MFEs
 lyx login -s <url>           # authenticate to a server
 ```
 
+## AWS Credentials (Local)
+
+Before any AWS command, always check credentials:
+
+```bash
+source ~/.lyx-aws 2>/dev/null
+aws sts get-caller-identity
+```
+
+If expired or missing, guide the user to: `bash scripts/aws-login.sh`
+
+- Credentials stored in `~/.lyx-aws` (auto-loaded by all Lyx scripts)
+- Never hardcode credentials — `~/.lyx-aws` is in `.gitignore`
+- For MFE deployment (`lyx deploy`): NO AWS credentials needed (talks to Admin API)
+- For infrastructure (`deploy-aws.sh`, `ensure-infra.sh`): AWS credentials required
+
 ## MFE Rules
 
 1. Every MFE must `export default` a React component from `src/index.tsx`

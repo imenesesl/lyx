@@ -46,3 +46,12 @@ refactor: code restructuring
 2. Pattern emerges → add rule to `.cursor/rules/`
 3. Workflow changes → update relevant skill in `.cursor/skills/`
 4. Feature added → update `docs/features.md` + README.md
+5. AWS/credential issue → update deploy skill + README credential section
+6. **Never make the same mistake twice** — always check `docs/errors.md` before debugging
+
+## Agent Pre-checks (ALWAYS do before acting)
+
+1. **AWS commands** → `source ~/.lyx-aws && aws sts get-caller-identity` — if expired, run `bash scripts/aws-login.sh`
+2. **CLI commands** → `which lyx` — if not found, rebuild and link
+3. **Directory renames** → `pnpm install --no-frozen-lockfile` + commit lockfile
+4. **After fixing anything** → update `docs/errors.md` with the resolution

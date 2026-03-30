@@ -8,6 +8,42 @@ description: >-
 
 # Lyx Deployment
 
+## Local AWS Credentials
+
+**CRITICAL**: Before running ANY AWS command, always ensure credentials are loaded.
+
+### Check credentials
+
+```bash
+source ~/.lyx-aws 2>/dev/null
+aws sts get-caller-identity
+```
+
+### Set up credentials (first time or expired)
+
+```bash
+bash scripts/aws-login.sh
+```
+
+This saves credentials to `~/.lyx-aws` (chmod 600). All Lyx scripts (`deploy-aws.sh`, `ensure-infra.sh`, etc.) auto-load this file.
+
+### Credential types
+
+| Type | Expires | Use for |
+|------|---------|---------|
+| IAM user access keys (`AKIA...`) | Never | Local dev, CI/CD |
+| SSO session tokens (`ASIA...`) | 1–12 hours | Temporary access |
+
+If the user gets `ExpiredToken`, run `bash scripts/aws-login.sh` again.
+
+### Where credentials are stored
+
+| Location | Purpose |
+|----------|---------|
+| `~/.lyx-aws` | Local machine — auto-loaded by all Lyx scripts |
+| GitHub Secrets | CI/CD — used by GitHub Actions workflow |
+| App Runner instance role | Production — automatic, no config needed |
+
 ## Local Development
 
 ```bash
@@ -18,16 +54,34 @@ bash scripts/platform.sh logs    # view logs
 
 Services: Admin API (4000), Admin UI (4001), SSR (4002), MongoDB (27017), MinIO (9000/9001), Nginx (80).
 
+## Deploying MFEs (local code → production)
+
+```bash
+lyx login -s https://YOUR-API-URL.awsapprunner.com
+cd apps/my-project
+lyx deploy       # interactive: pick MFEs
+lyx deploy --all # deploy everything
+```
+
+**Note**: `lyx deploy` talks to the Admin API, NOT directly to AWS. No AWS credentials needed for MFE deployment — only for platform infrastructure.
+
 ## First AWS Deploy (Manual)
 
 ```bash
-export AWS_ACCESS_KEY_ID="..."
-export AWS_SECRET_ACCESS_KEY="..."
-export MONGO_URI="mongodb+srv://..."
+bash scripts/aws-login.sh                              # set up credentials
+export MONGO_URI="mongodb+srv://user:pass@cluster/lyx"
 bash scripts/deploy-aws.sh deploy
 ```
 
 Creates: 3 ECR repos, 2 IAM roles, 1 S3 bucket, 3 App Runner services.
+
+## Manage Production
+
+```bash
+bash scripts/deploy-aws.sh update    # redeploy with latest code
+bash scripts/deploy-aws.sh status    # show service URLs and status
+bash scripts/destroy-aws.sh          # tear down everything
+```
 
 ## CI/CD Deploy (GitHub Actions)
 
@@ -60,6 +114,16 @@ The CI user needs `scripts/iam-policy.json` attached. Covers: ECR, App Runner, I
 ## Troubleshooting
 
 1. **Permission denied**: Attach `scripts/iam-policy.json` to IAM user
-2. **ECR repo not found**: `ensure-infra.sh` creates them automatically
-3. **JSON parse error**: Secrets have trailing newlines — `jq` handles this
-4. **App Runner stuck**: `aws apprunner start-deployment --service-arn <arn>`
+2. **ExpiredToken**: Run `bash scripts/aws-login.sh` to refresh credentials
+3. **ECR repo not found**: `ensure-infra.sh` creates them automatically
+4. **JSON parse error**: Secrets have trailing newlines — `jq` handles this
+5. **App Runner stuck**: `aws apprunner start-deployment --service-arn <arn>`
+6. **MFE bundles not loading**: SSR uses AWS SDK (not public URLs) — ensure instance role is set
+7. **Lockfile out of date**: Run `pnpm install --no-frozen-lockfile`, commit, push
+
+## Agent Rules
+
+- **Always check credentials first** before any AWS operation: `source ~/.lyx-aws && aws sts get-caller-identity`
+- If credentials are expired, guide the user to run `bash scripts/aws-login.sh`
+- Never hardcode AWS credentials in code or commits
+- After fixing an issue, update `docs/errors.md` with the resolution

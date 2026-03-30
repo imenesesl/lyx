@@ -227,11 +227,34 @@ Then in Admin UI: select the new version → **Publish**.
    - Network Access → Add IP → Allow from Anywhere (`0.0.0.0/0`)
    - Database → Connect → Drivers → copy the connection string
 
+### Configure AWS credentials locally
+
+Run the credential setup script once. It saves credentials to `~/.lyx-aws` and auto-loads them for all subsequent commands:
+
+```bash
+bash scripts/aws-login.sh
+```
+
+It will prompt for:
+- `AWS_ACCESS_KEY_ID` — from your IAM user (starts with `AKIA`) or SSO session (`ASIA`)
+- `AWS_SECRET_ACCESS_KEY` — the secret key
+- `AWS_SESSION_TOKEN` — only needed for SSO/temporary credentials (leave empty for IAM user keys)
+
+Credentials are stored in `~/.lyx-aws` (chmod 600). **All Lyx scripts auto-load this file**, so you only need to run `aws-login.sh` when credentials expire.
+
+To verify credentials are valid:
+
+```bash
+source ~/.lyx-aws
+aws sts get-caller-identity
+```
+
+> **Note**: SSO session tokens expire after 1–12 hours. IAM user access keys don't expire. For local development, prefer IAM user keys. For CI/CD, use IAM user keys in GitHub Secrets.
+
 ### First deploy
 
 ```bash
-export AWS_ACCESS_KEY_ID="..."
-export AWS_SECRET_ACCESS_KEY="..."
+bash scripts/aws-login.sh           # set up credentials (once)
 export MONGO_URI="mongodb+srv://user:pass@cluster.mongodb.net/lyx"
 bash scripts/deploy-aws.sh deploy
 ```
@@ -245,6 +268,8 @@ bash scripts/deploy-aws.sh update    # redeploy with latest code
 bash scripts/deploy-aws.sh status    # show service URLs and status
 bash scripts/destroy-aws.sh          # tear down everything
 ```
+
+> All deploy scripts auto-load `~/.lyx-aws`. If credentials expired, run `bash scripts/aws-login.sh` again.
 
 ### AWS Architecture
 
@@ -447,10 +472,11 @@ Each account gets a default ID (MongoDB ObjectId). You can set a custom alias in
 |----------|---------|
 | `README.md` | This file — getting started, commands, workflows |
 | `docs/architecture.md` | System design, data flow, decision records |
-| `docs/errors.md` | Error knowledge base with solutions |
+| `docs/errors.md` | Error knowledge base with cause/fix/prevention |
+| `docs/features.md` | Complete feature inventory |
 | `docs/roles.md` | Architect/Staff/Dev/QA review framework |
-| `.cursor/rules/` | AI agent project conventions (6 rule files) |
-| `.cursor/skills/` | AI agent workflows (3 skills) |
+| `.cursor/rules/` | AI agent conventions (7 rule files) |
+| `.cursor/skills/` | AI agent expert workflows (8 skills) |
 
 ---
 
@@ -474,6 +500,7 @@ cd apps/my-project && lyx deploy
 # http://localhost/{accountId}/{slug}/
 
 # PRODUCTION
+bash scripts/aws-login.sh               # configure AWS credentials (once)
 lyx login -s https://API.awsapprunner.com
 cd apps/my-project && lyx deploy
 # Admin UI: select version → publish

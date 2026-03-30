@@ -6,6 +6,20 @@ alwaysApply: false
 
 # CI/CD Conventions
 
+## Local AWS Credentials
+
+**ALWAYS check credentials before any AWS operation**:
+
+```bash
+source ~/.lyx-aws 2>/dev/null
+aws sts get-caller-identity
+```
+
+- If expired: guide user to run `bash scripts/aws-login.sh`
+- Credentials file: `~/.lyx-aws` (auto-loaded by all Lyx scripts)
+- Never hardcode credentials in code or commits
+- `~/.lyx-aws` is in `.gitignore`
+
 ## GitHub Actions Workflow
 
 The CI (`ci.yml`) has these jobs in order:
@@ -23,6 +37,14 @@ The CI (`ci.yml`) has these jobs in order:
 4. **JSON safety**: always use `jq` to build env var JSON — never string interpolation with secrets
 5. **Concurrency**: only one workflow per branch at a time (`cancel-in-progress: false`)
 6. `ensure-service.sh` handles both create and update — pass 5 args: name, image, port, env_vars_json, needs_instance_role
+7. **Instance roles**: admin-api and ssr use `NEEDS_INSTANCE_ROLE=true` for S3 access
+
+## S3 Storage Access
+
+- SSR server uses `@aws-sdk/client-s3` with `GetObjectCommand` (authenticated via instance role)
+- **Never use public S3 URLs** for fetching bundles — S3 blocks public access by default
+- Admin API uploads to S3 via AWS SDK (also uses instance role)
+- The `ensure-infra.sh` script configures bucket policy as fallback
 
 ## Secret Handling
 
@@ -33,7 +55,14 @@ The CI (`ci.yml`) has these jobs in order:
 ## Script Convention
 
 - All scripts use `set -euo pipefail`
+- All scripts auto-load `~/.lyx-aws` if `AWS_ACCESS_KEY_ID` is not set
 - Use `REGION="${REGION:-${AWS_REGION:-us-east-1}}"` for region resolution
 - Use `::group::` / `::endgroup::` for GitHub Actions log grouping
 - Naming: `lyx-production-<service>` for App Runner services
 - Bucket naming: `lyx-bundles-<account-id>-production`
+
+## After Fixing Issues
+
+1. Update `docs/errors.md` with the new error and resolution
+2. Update this rule file if the fix changes conventions
+3. Update `README.md` if the fix affects the user workflow

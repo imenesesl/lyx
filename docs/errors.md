@@ -119,6 +119,27 @@ pnpm nx run-many -t build --projects='@lyx/types,@lyx/sdk,...,@lyx/admin-ui'
 **Fix**: Force deployment: `aws apprunner start-deployment --service-arn <arn>`
 **Prevention**: CI could add a `start-deployment` step after `update-service`.
 
+### AWS Credentials Expired (ExpiredToken)
+**Category**: Infra / Local
+**Symptom**: `An error occurred (ExpiredToken) when calling the GetCallerIdentity operation: The security token included in the request is expired`
+**Cause**: Local AWS SSO session token has expired. SSO tokens last 1–12 hours depending on configuration.
+**Fix**: Run `bash scripts/aws-login.sh` to enter new credentials. They are saved to `~/.lyx-aws` and auto-loaded by all Lyx scripts.
+**Prevention**: For local development, prefer IAM user access keys (permanent) over SSO session tokens (temporary). All Lyx scripts auto-load `~/.lyx-aws` — the agent should always check credential validity before running AWS commands (`source ~/.lyx-aws && aws sts get-caller-identity`).
+
+### MFE Bundles Not Loading from S3 (Failed to fetch dynamically imported module)
+**Category**: Infra / Runtime
+**Symptom**: `Failed to fetch dynamically imported module: https://...awsapprunner.com/storage/mfe-name/0.0.1/remoteEntry.js`
+**Cause**: SSR server was fetching MFE bundles from S3 via public URLs (`https://bucket.s3.region.amazonaws.com/key`), but S3 blocks public access by default. The `fetch()` call returned 403/404.
+**Fix**: SSR server now uses `@aws-sdk/client-s3` with `GetObjectCommand`, which authenticates using the App Runner instance role (`lyx-apprunner-instance` with `AmazonS3FullAccess`). No public bucket needed.
+**Prevention**: Never use unauthenticated `fetch()` for S3 in production. Always use the AWS SDK with instance role credentials. The SSR service must be deployed with `NEEDS_INSTANCE_ROLE=true`.
+
+### Frozen Lockfile Failure After Directory Rename
+**Category**: Build / CI
+**Symptom**: `ERR_PNPM_OUTDATED_LOCKFILE Cannot install with "frozen-lockfile" because pnpm-lock.yaml is not up to date`
+**Cause**: Renaming workspace directories (e.g., MFE folders) invalidates the lockfile paths. CI uses `--frozen-lockfile` by default.
+**Fix**: Run `pnpm install --no-frozen-lockfile` locally, commit the updated `pnpm-lock.yaml`, and push.
+**Prevention**: Always run `pnpm install` after any directory rename and commit the lockfile.
+
 ---
 
 ## Adding New Errors
