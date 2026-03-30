@@ -261,7 +261,66 @@ lyx deploy --force    # skips contract validation
 
 ---
 
-## 8. Infrastructure
+## 8. Observability
+
+### Overview
+
+Per-MFE observability built into the framework. The Shell automatically captures load times and errors, sends metrics to the API in batches, and the Admin UI provides a health dashboard with error budgets.
+
+### SDK API (`@lyx/sdk`)
+
+| Export | Signature | Purpose |
+|--------|-----------|---------|
+| `reportMetric` | `(event: MFEMetricEvent) => void` | Report a custom metric event |
+| `reportRenderError` | `(name, version, slot, msg) => void` | Report an MFE render crash |
+| `startLoadTimer` | `(name, version, slot) => { success, error }` | Measure MFE load time |
+| `configureObservability` | `(config) => void` | Override endpoint, flush interval, buffer size |
+
+### Metric Types
+
+| Type | Trigger | Data |
+|------|---------|------|
+| `load_success` | MFE component loaded and rendered | `loadTimeMs` |
+| `load_error` | MFE failed to load (fetch, federation, script) | `loadTimeMs`, `errorMessage` |
+| `render_error` | MFE component crashed after mounting | `errorMessage` |
+| `event_timeout` | Reserved for future use | — |
+
+### Collection Pipeline
+
+1. Shell instruments `MFESlot` with `startLoadTimer()` on load and `reportRenderError()` on crash
+2. SDK buffers events in memory (max 50)
+3. Flush every 30 seconds or on page hide (`sendBeacon` with JSON fallback)
+4. `POST /api/metrics` ingests up to 100 events per request (public, no auth)
+5. MongoDB TTL index auto-deletes metrics after 7 days
+
+### API Endpoints
+
+| Endpoint | Auth | Purpose |
+|----------|------|---------|
+| `POST /api/metrics` | No | Ingest metric events from browsers |
+| `GET /api/metrics/health` | Yes | Aggregated health for all MFEs |
+| `GET /api/metrics/health/:mfeName` | Yes | Time-bucketed detail for one MFE |
+
+### Health Dashboard (Admin UI)
+
+- Located at `/health` in the Admin UI navigation
+- Summary cards: tracked MFEs, healthy, degraded, unhealthy
+- Per-MFE cards with status indicator (green/yellow/red), availability, error rate, p50/p95 load times
+- Click-to-expand detail view with SVG sparkline charts for load time and error rate over time
+- Recent errors list with type, message, and timestamp
+- Configurable time window: 1h, 6h, 24h, 7d
+
+### Error Budget Thresholds
+
+| Status | Availability | Error Rate |
+|--------|-------------|------------|
+| Green (Healthy) | ≥ 99.5% | < 0.5% |
+| Yellow (Degraded) | ≥ 95% | 0.5% – 5% |
+| Red (Unhealthy) | < 95% | > 5% |
+
+---
+
+## 9. Infrastructure
 
 ### Local (Docker Compose)
 

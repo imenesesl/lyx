@@ -121,9 +121,31 @@ When the Project Manager moves an item from the backlog to the work plan, use th
 
 ---
 
+### Per-MFE Observability
+
+- **Backlog ref**: P0-002
+- **Priority**: P0
+- **Status**: in-progress
+- **Started**: 2026-03-24
+- **Target**: 2026-03-24
+
+#### Architect Analysis
+- **Feasibility**: Yes — metrics from browser via batch POST, MongoDB storage with TTL
+- **System impact**: SDK (new module), Shell (MFESlot instrumentation), Admin API (new model + routes), Admin UI (new page)
+- **Dependencies**: None
+- **Breaking changes**: No — all additions are opt-in
+- **Risks**: Low — metrics are fire-and-forget, no impact on MFE rendering
+
+#### Staff / Principal Review
+- **Approach**: SDK observability module buffers metrics and flushes via sendBeacon/fetch. Shell MFESlot wraps load calls with startLoadTimer. ErrorBoundary reports render crashes. API ingests metrics publicly, aggregation requires auth. Admin UI health page with SVG sparklines.
+- **Effort estimate**: M (3-5 days)
+- **Files affected**: `packages/sdk/src/observability.ts` (new), `packages/shell/src/components/MFESlot.tsx`, `packages/shell/src/components/ErrorBoundary.tsx`, `platform/admin-api/src/db/models/mfe-metric.ts` (new), `platform/admin-api/src/routes/metrics.ts` (new), `platform/admin-ui/src/pages/Health.tsx` (new)
+- **Technical risks**: High-traffic apps could generate many metrics; mitigated by client-side batching, 100-event ingestion cap, and TTL index
+- **Alternative approaches considered**: External APM (rejected: adds vendor dependency), WebSocket streaming (rejected: overkill for this use case)
+
 ## Completed Sprints
 
-_No sprints completed yet._
+### P0-001: MFE Contract Testing — Completed 2026-03-24
 
 ---
 

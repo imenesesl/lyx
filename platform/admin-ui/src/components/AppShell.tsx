@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { to: "/", label: "Overview", icon: "◫", end: true },
   { to: "/apps", label: "Applications", icon: "▦", end: false },
   { to: "/mfes", label: "Micro Frontends", icon: "◱", end: false },
+  { to: "/health", label: "MFE Health", icon: "♥", end: false },
   { to: "/layouts", label: "Layouts", icon: "⊞", end: false },
   { to: "/settings", label: "Settings", icon: "⚙", end: false },
 ];

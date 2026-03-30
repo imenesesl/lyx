@@ -8,7 +8,7 @@ export default defineConfig({
     outDir: "dist-ssr",
   },
   ssr: {
-    noExternal: ["@lyx/types"],
+    noExternal: ["@lyx/types", "@lyx/sdk"],
     external: ["@module-federation/runtime"],
   },
 });

@@ -166,6 +166,9 @@ importers:
 
   packages/shell:
     dependencies:
+      '@lyx/sdk':
+        specifier: workspace:*
+        version: link:../sdk
       '@lyx/types':
         specifier: workspace:*
         version: link:../types

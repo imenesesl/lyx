@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@lyx/types": "workspace:*",
+    "@lyx/sdk": "workspace:*",
     "@lyx/vite-plugin": "workspace:*",
     "@module-federation/runtime": "^2.2.0",
     "react": "^19.1.0",

@@ -1,5 +1,6 @@
 import React, { Suspense, useEffect, useState, useRef, type ComponentType } from "react";
 import type { MFERegistryEntry } from "@lyx/types";
+import { startLoadTimer, reportRenderError } from "@lyx/sdk";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { SlotSkeleton } from "./SlotSkeleton";
 
@@ -54,6 +55,7 @@ function ClientMFESlot({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadedRef = useRef<string>("");
+  const mfeInfoRef = useRef<{ name: string; version: string }>({ name: "", version: "" });
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +69,8 @@ function ClientMFESlot({
       setLoading(true);
       setError(null);
 
+      const timer = startLoadTimer(target, "unknown", slot);
+
       try {
         const url = overrideMfe
           ? `${registryUrl}/mfes/by-name/${overrideMfe}`
@@ -74,6 +78,7 @@ function ClientMFESlot({
 
         const res = await fetch(url);
         if (!res.ok) {
+          timer.error(`HTTP ${res.status}`);
           if (!cancelled) {
             setLoading(false);
             setComponent(null);
@@ -82,13 +87,18 @@ function ClientMFESlot({
         }
 
         const entry: MFERegistryEntry = await res.json();
+        mfeInfoRef.current = { name: entry.name, version: entry.version ?? "unknown" };
+
+        const loadTimerWithVersion = startLoadTimer(entry.name, entry.version ?? "unknown", slot);
         const comp = await loadMFEComponent(entry, { init, loadRemote, registerRemotes });
 
         if (!cancelled && comp) {
           loadedRef.current = target;
           setComponent(() => comp);
+          loadTimerWithVersion.success();
         }
       } catch (err) {
+        timer.error(String(err));
         if (!cancelled) {
           setError(String(err));
         }
@@ -119,8 +129,16 @@ function ClientMFESlot({
 
   const mergedProps = { ...props, ...(overrideParams ?? {}) };
 
+  const onCrash = (err: Error) => {
+    const info = mfeInfoRef.current;
+    reportRenderError(info.name || slot, info.version || "unknown", slot, err.message);
+  };
+
   return (
-    <ErrorBoundary fallback={<SlotPlaceholder slot={slot} state="crashed" />}>
+    <ErrorBoundary
+      fallback={<SlotPlaceholder slot={slot} state="crashed" />}
+      onError={onCrash}
+    >
       <Suspense fallback={skeletonFallback}>
         <Component {...mergedProps} />
       </Suspense>

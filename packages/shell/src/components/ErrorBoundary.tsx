@@ -3,6 +3,7 @@ import React, { Component, type ReactNode, type ErrorInfo } from "react";
 interface Props {
   fallback: ReactNode;
   children: ReactNode;
+  onError?: (error: Error, info: ErrorInfo) => void;
 }
 
 interface State {
@@ -21,6 +22,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error("[lyx] MFE crashed:", error, info.componentStack);
+    this.props.onError?.(error, info);
   }
 
   render() {

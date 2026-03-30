@@ -17,6 +17,7 @@ import layoutsRoutes from "./routes/layouts.js";
 import appConfigRoutes from "./routes/app-config.js";
 import runtimeRoutes from "./routes/runtime.js";
 import contractsRoutes from "./routes/contracts.js";
+import metricsRoutes from "./routes/metrics.js";
 
 async function main() {
   await connectDB();
@@ -79,6 +80,7 @@ async function main() {
   app.use("/api/apps", appConfigRoutes);
   app.use("/api/runtime", runtimeRoutes);
   app.use("/api/contracts", contractsRoutes);
+  app.use("/api/metrics", metricsRoutes);
 
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     logger.error({ err: err.message }, "Unhandled error");

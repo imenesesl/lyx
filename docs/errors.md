@@ -155,6 +155,16 @@ pnpm nx run-many -t build --projects='@lyx/types,@lyx/sdk,...,@lyx/admin-ui'
 
 ---
 
+### MFE Health Dashboard Shows No Data
+
+**Category**: Runtime
+**Symptom**: The Health page in Admin UI shows "No metrics yet" even though MFEs are being used.
+**Cause**: Metrics are only collected on the client side (browser). Possible reasons: (1) the MFE Shell is not deployed with the latest SDK containing the observability module, (2) the `/api/metrics` endpoint is unreachable from the browser, or (3) the metrics haven't flushed yet (default: every 30 seconds).
+**Fix**: Ensure the Shell and SDK are rebuilt and deployed with the observability changes. Check browser DevTools Network tab for `POST /api/metrics` requests. If the endpoint returns errors, check Admin API logs.
+**Prevention**: Always rebuild and redeploy the Shell/SSR after SDK updates.
+
+---
+
 ### ORPHANED_CONSUMER Warning
 
 **Category**: Deploy

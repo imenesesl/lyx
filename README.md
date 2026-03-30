@@ -358,6 +358,7 @@ Go to GitHub → **Actions** → **CI** → **Run workflow** → triggers a full
 | `lyx deploy --force` | Deploy without contract validation |
 | `lyx test` | Validate MFE event and shared state contracts |
 | `lyx test --json` | Output contract report as JSON |
+| Admin UI `/health` | Per-MFE health dashboard with error budgets |
 | `lyx login` | Log in to local platform |
 | `lyx login -s <url>` | Log in to a remote server |
 | `lyx view` | Open the app in the browser |

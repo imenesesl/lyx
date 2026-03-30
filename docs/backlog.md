@@ -36,14 +36,14 @@ Status: `proposed` | `architect-review` | `approved` | `in-progress` | `done` | 
 
 ### P0-002: Per-MFE Observability
 
-**Status**: proposed
+**Status**: done
 **Competitive gap**: Per-MFE error budgets and health metrics are fragmented across RUM vendors. No MFE framework provides this natively.
 **Description**: Error boundaries with metrics collection, per-slot error budgets, health dashboard in Admin UI, and alerts when an MFE degrades.
 **Acceptance criteria**:
-- Shell captures and reports MFE load failures, render errors, and event timeouts
-- Admin UI shows per-MFE health: error rate, load time p50/p95, availability
-- Error budget per MFE with visual indicator (green/yellow/red)
-- API endpoint for health data consumption by external tools
+- [x] Shell captures and reports MFE load failures, render errors, and event timeouts
+- [x] Admin UI shows per-MFE health: error rate, load time p50/p95, availability
+- [x] Error budget per MFE with visual indicator (green/yellow/red)
+- [x] API endpoint for health data consumption by external tools
 **Technical scope**: Shell, Admin API, Admin UI
 **Review roles**: Architect (data pipeline), Staff (performance impact)
 

@@ -7,8 +7,15 @@ export { useSharedState } from "./hooks/useSharedState";
 export { navigate, goBack, onNavigate } from "./navigation";
 export { createSharedStore } from "./store";
 export { getLyxConfig, setLyxConfig } from "./config";
+export {
+  reportMetric,
+  reportRenderError,
+  startLoadTimer,
+  configureObservability,
+} from "./observability";
 
 export type { NavigatePayload } from "./navigation";
+export type { MFEMetricEvent, MetricType } from "./observability";
 
 export type {
   EventHandler,

@@ -11,6 +11,7 @@ import { MFEDetail } from "./pages/MFEDetail";
 import { Layouts } from "./pages/Layouts";
 import { LayoutBuilder } from "./pages/LayoutBuilder";
 import { Settings } from "./pages/Settings";
+import { Health } from "./pages/Health";
 import { PageSkeleton } from "./components/Skeleton";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -54,6 +55,7 @@ export function App() {
         <Route path="layouts" element={<Layouts />} />
         <Route path="layouts/new" element={<LayoutBuilder />} />
         <Route path="layouts/:id/edit" element={<LayoutBuilder />} />
+        <Route path="health" element={<Health />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 

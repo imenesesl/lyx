@@ -10,6 +10,6 @@ export default defineConfig({
     manifest: true,
   },
   ssr: {
-    noExternal: ["@lyx/types"],
+    noExternal: ["@lyx/types", "@lyx/sdk"],
   },
 });
