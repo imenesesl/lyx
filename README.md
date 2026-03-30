@@ -353,8 +353,11 @@ Go to GitHub → **Actions** → **CI** → **Run workflow** → triggers a full
 |---------|-------------|
 | `lyx init <name>` | Create a new project in `apps/` |
 | `lyx create <name> --slot <slot>` | Create an MFE inside a project |
-| `lyx deploy` | Build and publish changed MFEs |
+| `lyx deploy` | Build and publish changed MFEs (validates contracts) |
 | `lyx deploy --all` | Build and publish all MFEs |
+| `lyx deploy --force` | Deploy without contract validation |
+| `lyx test` | Validate MFE event and shared state contracts |
+| `lyx test --json` | Output contract report as JSON |
 | `lyx login` | Log in to local platform |
 | `lyx login -s <url>` | Log in to a remote server |
 | `lyx view` | Open the app in the browser |

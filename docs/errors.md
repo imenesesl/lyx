@@ -142,6 +142,29 @@ pnpm nx run-many -t build --projects='@lyx/types,@lyx/sdk,...,@lyx/admin-ui'
 
 ---
 
+### Contract Validation Blocks Deploy
+
+**Category**: Deploy
+**Symptom**: `lyx deploy` exits with `✗ Contract validation failed: N error(s)` and refuses to upload.
+**Cause**: One or more MFEs have incompatible event or shared state contracts. Common causes:
+- Producer emits an event with a schema missing fields that a consumer expects
+- Two MFEs declare the same shared state key with incompatible schemas
+- An MFE consumes an event that no other MFE emits (warning, but does not block)
+**Fix**: Run `lyx test` to see the full report. Fix schema mismatches in the relevant `mfe.config.json` files. If the incompatibility is intentional, deploy with `lyx deploy --force`.
+**Prevention**: Add contracts to `mfe.config.json` early. Run `lyx test` during development. Review contract changes in PRs.
+
+---
+
+### ORPHANED_CONSUMER Warning
+
+**Category**: Deploy
+**Symptom**: `lyx test` reports `⚠ [ORPHANED_CONSUMER] "my-mfe" consumes event "some:event" but no MFE emits it`
+**Cause**: An MFE declares a consumed event in its contracts, but no MFE in the workspace emits that event.
+**Fix**: Either add the event to a producer's `emits` contracts, or remove it from the consumer's `consumes`. This is a warning and does not block deploy.
+**Prevention**: Keep contracts in sync when adding or removing events.
+
+---
+
 ## Adding New Errors
 
 When documenting a new error, use this template:

@@ -23,7 +23,7 @@ Status: `proposed` | `architect-review` | `approved` | `in-progress` | `done` | 
 
 ### P0-001: MFE Contract Testing
 
-**Status**: proposed
+**Status**: in-progress
 **Competitive gap**: No competitor validates that MFE event schemas remain compatible across independent release cadences.
 **Description**: Automated validation that MFE events (`emit`/`on` contracts), shared state keys, and exposed props don't break consumers when a producer MFE is updated independently.
 **Acceptance criteria**:

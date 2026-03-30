@@ -29,7 +29,47 @@ Backlog (PO) → PM selects → Architect review → Staff/Principal review → 
 
 ## Current Sprint
 
-_No items currently in sprint. Use the template below to add items from the backlog._
+### MFE Contract Testing
+
+- **Backlog ref**: P0-001
+- **Priority**: P0
+- **Status**: in-progress
+- **Started**: 2026-03-24
+- **Target**: 2026-03-24
+
+#### Architect Analysis
+- **Feasibility**: Yes — contracts declared in existing `mfe.config.json`, validation as pure function
+- **System impact**: Types, CLI, Admin API (new contracts route)
+- **Dependencies**: None — builds on existing event bus and shared state
+- **Breaking changes**: No — `contracts` field is optional in `MFEConfig`
+- **Risks**: Low — additive feature, no changes to runtime behavior
+
+#### Staff / Principal Review
+- **Approach**: Contract schemas use JSON Schema subset (type, properties, required, items). Validation logic is a pure function comparing producer/consumer schemas. CLI `lyx test` discovers MFEs and runs validation. `lyx deploy` calls validation pre-upload.
+- **Effort estimate**: M (3-5 days)
+- **Files affected**: `packages/types/src/contracts.ts` (new), `packages/types/src/mfe-config.ts`, `packages/cli/src/commands/test.ts` (new), `packages/cli/src/lib/contract-validator.ts` (new), `packages/cli/src/commands/deploy.ts`, `platform/admin-api/src/routes/contracts.ts` (new)
+- **Technical risks**: Schema comparison is structural, not semantic — cannot catch all incompatibilities
+- **Alternative approaches considered**: Full JSON Schema with `ajv` (rejected: too heavy for V1), source code scanning (rejected: unreliable with dynamic event names)
+
+#### Implementation
+- **Assigned to**: Engineer (AI agent)
+- **Branch**: main
+
+#### QA Checklist
+- [x] Acceptance criteria from backlog met
+- [ ] Local development flow verified
+- [ ] Production deployment verified
+- [x] Edge cases tested (no contracts, partial contracts, schema mismatches)
+- [x] No regressions in existing features
+- [ ] CI pipeline passes
+
+#### Documentation Checklist
+- [x] `docs/features.md` updated
+- [ ] `docs/errors.md` updated
+- [x] `README.md` updated
+- [ ] `.cursor/rules/` updated
+- [ ] `.cursor/skills/` updated
+- [x] `docs/backlog.md` item status updated
 
 ---
 

@@ -1,3 +1,5 @@
+import type { MFEContracts } from "./contracts";
+
 /**
  * Minimal configuration that a vibe coder writes in mfe.config.json.
  * Only `name` and `slot` are required -- the framework handles the rest.
@@ -12,6 +14,8 @@ export interface MFEConfig {
   exposes?: Record<string, string>;
   /** Extra shared dependencies beyond React */
   shared?: Record<string, SharedDepConfig>;
+  /** Inter-MFE communication contracts for validation */
+  contracts?: MFEContracts;
 }
 
 export interface SharedDepConfig {

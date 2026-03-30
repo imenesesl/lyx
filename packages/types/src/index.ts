@@ -22,3 +22,12 @@ export type {
   MFELoaderOptions,
   MFELoaderResult,
 } from "./loader";
+export type {
+  MFEContracts,
+  ContractSchema,
+  EventContract,
+  SharedStateContract,
+  ContractViolation,
+  ContractReport,
+  ContractSeverity,
+} from "./contracts";

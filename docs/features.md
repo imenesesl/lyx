@@ -55,14 +55,23 @@ Last updated by automated sweep. Keep in sync with code changes.
 | `lyx registry` | `--url` | List MFEs registered on the dev registry |
 | `lyx publish [mfe]` | `-s`, `-t`, `-v`, `--slot` | Build, tar, upload single MFE version to server |
 | `lyx login` | `-s`, `-e`, `-p` | Authenticate and save token to `~/.lyxrc` |
-| `lyx deploy` | `-s`, `-v`, `-a/--all` | Interactive multi-MFE deploy with auto version bump |
+| `lyx deploy` | `-s`, `-v`, `-a/--all`, `-f/--force` | Interactive multi-MFE deploy with auto version bump and contract validation |
 | `lyx view` | `-s`, `--app`, `--port` | Preview published app locally using shell |
+| `lyx test` | `-d/--dir`, `--json` | Validate MFE event and shared state contracts |
+| `lyx aws login` | — | Set up AWS credentials (saved to `~/.lyx-aws`) |
+| `lyx aws status` | — | Check if AWS credentials are valid |
+| `lyx aws logout` | — | Remove saved AWS credentials |
 
 ### Behaviors
 
 - `init` updates `pnpm-workspace.yaml` if not already covered by existing globs
 - `deploy` auto-increments patch version from server's latest published version
 - `deploy` writes updated version back to `mfe.config.json`
+- `deploy` runs contract validation before upload (blocks on errors, `--force` to skip)
+- `deploy` sends contract metadata to server for cross-app validation
+- `test` scans all MFEs in the workspace (or specified directory) for contract declarations
+- `test` validates event producer/consumer compatibility and shared state schema consistency
+- `test` exits with code 1 if errors found (warnings do not block)
 - `login` stores `accountId` (alias or ObjectId) in `~/.lyxrc`
 - `view` generates temporary `vite.preview.config.ts` in shell package (cleaned on exit)
 
@@ -185,7 +194,74 @@ Regex: `/^\/([a-z0-9][a-z0-9-]{1,30}[a-z0-9]|[a-f0-9]{24})\/([^/]+)/`
 
 ---
 
-## 7. Infrastructure
+## 7. Contract Testing
+
+### Overview
+
+MFE Contract Testing validates that inter-MFE communication (events and shared state) remains compatible across independently deployed MFEs. Contracts are declared in `mfe.config.json` and validated by the CLI before deploy.
+
+### Contract Declaration (`mfe.config.json`)
+
+```json
+{
+  "name": "cart-mfe",
+  "slot": "main",
+  "contracts": {
+    "emits": {
+      "cart:item-added": {
+        "schema": { "type": "object", "properties": { "itemId": { "type": "string" }, "quantity": { "type": "number" } }, "required": ["itemId", "quantity"] },
+        "description": "Fired when user adds item to cart"
+      }
+    },
+    "consumes": {
+      "auth:login": {
+        "schema": { "type": "object", "properties": { "userId": { "type": "string" } }, "required": ["userId"] }
+      }
+    },
+    "sharedState": {
+      "cartItems": {
+        "access": "readwrite",
+        "schema": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" } } } }
+      }
+    }
+  }
+}
+```
+
+### Validation Rules
+
+| Code | Severity | Meaning |
+|------|----------|---------|
+| `SCHEMA_MISMATCH` | error | Producer schema incompatible with consumer expectation |
+| `STATE_SCHEMA_MISMATCH` | error | Shared state writer schema incompatible with reader |
+| `ORPHANED_CONSUMER` | warning | MFE consumes event nobody emits |
+| `UNUSED_EMISSION` | warning | MFE emits event nobody consumes |
+| `MULTIPLE_WRITERS` | warning | Multiple MFEs write to same shared state key |
+
+### CLI Usage
+
+```bash
+lyx test              # validate all MFEs in workspace
+lyx test --json       # output report as JSON
+lyx test -d ./apps/   # validate specific directory
+```
+
+### Deploy Integration
+
+`lyx deploy` automatically runs contract validation before uploading. If errors are found, deploy is blocked. Use `--force` to skip:
+
+```bash
+lyx deploy            # validates contracts, blocks on errors
+lyx deploy --force    # skips contract validation
+```
+
+### API Endpoint
+
+`GET /api/contracts/:appId` returns all contracts for MFEs in a published app configuration. Requires authentication.
+
+---
+
+## 8. Infrastructure
 
 ### Local (Docker Compose)
 

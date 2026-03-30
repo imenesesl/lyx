@@ -1,5 +1,29 @@
 {
   "name": "mfe-footer",
   "slot": "footer",
-  "version": "0.0.1"
+  "version": "0.0.1",
+  "contracts": {
+    "consumes": {
+      "theme:change": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "mode": { "type": "string" }
+          },
+          "required": ["mode"]
+        }
+      }
+    },
+    "sharedState": {
+      "theme": {
+        "access": "read",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "mode": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
 }

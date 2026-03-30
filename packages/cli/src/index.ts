@@ -9,6 +9,7 @@ import { loginCommand } from "./commands/login";
 import { deployCommand } from "./commands/deploy";
 import { viewCommand } from "./commands/view";
 import { awsCommand } from "./commands/aws";
+import { testCommand } from "./commands/test";
 
 export function main() {
   const program = new Command();
@@ -28,6 +29,7 @@ export function main() {
   program.addCommand(deployCommand());
   program.addCommand(viewCommand());
   program.addCommand(awsCommand());
+  program.addCommand(testCommand());
 
   program.parse();
 }

@@ -1,5 +1,19 @@
 {
   "name": "mfe-1",
   "slot": "root",
-  "version": "0.0.1"
+  "version": "0.0.1",
+  "contracts": {
+    "consumes": {
+      "header:action": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "action": { "type": "string" }
+          },
+          "required": ["action"]
+        },
+        "description": "Receives actions from header"
+      }
+    }
+  }
 }

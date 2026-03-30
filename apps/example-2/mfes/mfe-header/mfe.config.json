@@ -1,5 +1,41 @@
 {
   "name": "mfe-header",
   "slot": "header",
-  "version": "0.0.1"
+  "version": "0.0.1",
+  "contracts": {
+    "emits": {
+      "header:action": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "action": { "type": "string" },
+            "target": { "type": "string" }
+          },
+          "required": ["action"]
+        },
+        "description": "User interaction from header controls"
+      },
+      "theme:change": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "mode": { "type": "string" }
+          },
+          "required": ["mode"]
+        },
+        "description": "Day/night theme toggle"
+      }
+    },
+    "sharedState": {
+      "theme": {
+        "access": "readwrite",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "mode": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
 }

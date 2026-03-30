@@ -10,6 +10,7 @@ import { resolve, join } from "node:path";
 import { execSync } from "node:child_process";
 import { createInterface } from "node:readline";
 import { readRC } from "./login";
+import { validateContracts } from "../lib/contract-validator";
 
 function findViteBin(startDir: string): string {
   let dir = startDir;
@@ -57,6 +58,7 @@ interface MFEInfo {
   name: string;
   slot: string;
   version: string;
+  contracts?: import("@lyx/types").MFEContracts;
 }
 
 function findMFEs(projectDir: string): MFEInfo[] {
@@ -74,6 +76,7 @@ function findMFEs(projectDir: string): MFEInfo[] {
         name: config.name ?? d,
         slot: config.slot ?? "main",
         version: config.version ?? "0.0.1",
+        contracts: config.contracts,
       };
     });
 }
@@ -93,6 +96,7 @@ export function deployCommand() {
     .option("-s, --server <url>", "Lyx Admin server URL (reads from ~/.lyxrc)")
     .option("-v, --ver <version>", "Override version for all MFEs")
     .option("-a, --all", "Deploy all MFEs without prompting")
+    .option("-f, --force", "Skip contract validation")
     .description("Interactive deploy: pick MFEs from your project and publish them")
     .action(async (opts) => {
       const { default: chalk } = await import("chalk");
@@ -168,6 +172,38 @@ export function deployCommand() {
           `\n  Deploying ${selected.length} MFE(s): ${selected.map((m) => m.name).join(", ")}\n`
         )
       );
+
+      const hasContracts = mfes.some((m) => m.contracts);
+      if (hasContracts && !opts.force) {
+        console.log(chalk.gray("  Validating contracts...\n"));
+        const configs = mfes.map((m) => ({
+          name: m.name,
+          slot: m.slot,
+          version: m.version,
+          contracts: m.contracts,
+        }));
+        const report = validateContracts(configs);
+
+        if (!report.valid) {
+          console.error(chalk.red(`  ✗ Contract validation failed: ${report.summary.errors} error(s)\n`));
+          for (const v of report.violations.filter((v) => v.severity === "error")) {
+            console.error(chalk.red(`    • [${v.code}] ${v.message}`));
+          }
+          console.log(chalk.yellow("\n  Use 'lyx deploy --force' to skip contract validation.\n"));
+          process.exit(1);
+        }
+
+        if (report.summary.warnings > 0) {
+          for (const v of report.violations.filter((v) => v.severity === "warning")) {
+            console.log(chalk.yellow(`    ⚠ [${v.code}] ${v.message}`));
+          }
+          console.log();
+        }
+
+        console.log(chalk.green("  ✓ Contracts valid\n"));
+      } else if (opts.force && hasContracts) {
+        console.log(chalk.yellow("  ⚠ Contract validation skipped (--force)\n"));
+      }
 
       for (const mfe of selected) {
         console.log(chalk.blue(`\n  ── ${mfe.name} ──\n`));
@@ -261,6 +297,9 @@ export function deployCommand() {
           formData.append("version", version);
           formData.append("slot", mfe.slot);
           formData.append("bundle", new Blob([fileBuffer]), `${mfe.name}-${version}.tar.gz`);
+          if (mfe.contracts) {
+            formData.append("metadata", JSON.stringify({ contracts: mfe.contracts }));
+          }
 
           const uploadRes = await fetch(`${server}/api/mfes/${mfeId}/versions`, {
             method: "POST",
