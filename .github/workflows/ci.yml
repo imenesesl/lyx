@@ -48,6 +48,7 @@ jobs:
       admin_api: ${{ steps.changes.outputs.admin_api }}
       admin_ui: ${{ steps.changes.outputs.admin_ui }}
       ssr: ${{ steps.changes.outputs.ssr }}
+      any_deploy: ${{ steps.changes.outputs.any_deploy }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,7 +57,28 @@ jobs:
       - name: Detect changed paths
         id: changes
         run: |
-          CHANGED=$(git diff --name-only HEAD~1 HEAD)
+          COMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo "1")
+
+          if [ "$COMMIT_COUNT" -le 1 ]; then
+            echo "First commit — deploying everything"
+            echo "admin_api=true" >> $GITHUB_OUTPUT
+            echo "admin_ui=true" >> $GITHUB_OUTPUT
+            echo "ssr=true" >> $GITHUB_OUTPUT
+            echo "any_deploy=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+
+          if [ -z "$CHANGED" ]; then
+            echo "No changes or first push — deploying everything"
+            echo "admin_api=true" >> $GITHUB_OUTPUT
+            echo "admin_ui=true" >> $GITHUB_OUTPUT
+            echo "ssr=true" >> $GITHUB_OUTPUT
+            echo "any_deploy=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           echo "Changed files:"
           echo "$CHANGED"
 
@@ -64,26 +86,23 @@ jobs:
           admin_ui=false
           ssr=false
 
-          if echo "$CHANGED" | grep -qE '^platform/admin-api/'; then
-            admin_api=true
-          fi
+          if echo "$CHANGED" | grep -qE '^platform/admin-api/'; then admin_api=true; fi
+          if echo "$CHANGED" | grep -qE '^platform/admin-ui/'; then admin_ui=true; fi
+          if echo "$CHANGED" | grep -qE '^(platform/ssr/|packages/shell/)'; then ssr=true; fi
 
-          if echo "$CHANGED" | grep -qE '^platform/admin-ui/'; then
-            admin_ui=true
-          fi
-
-          if echo "$CHANGED" | grep -qE '^(platform/ssr/|packages/shell/)'; then
-            ssr=true
+          any_deploy=false
+          if [ "$admin_api" = "true" ] || [ "$admin_ui" = "true" ] || [ "$ssr" = "true" ]; then
+            any_deploy=true
           fi
 
           echo "admin_api=$admin_api" >> $GITHUB_OUTPUT
           echo "admin_ui=$admin_ui" >> $GITHUB_OUTPUT
           echo "ssr=$ssr" >> $GITHUB_OUTPUT
-          echo ""
+          echo "any_deploy=$any_deploy" >> $GITHUB_OUTPUT
           echo "Deploy: api=$admin_api ui=$admin_ui ssr=$ssr"
 
-  deploy-admin-api:
-    if: needs.detect-changes.outputs.admin_api == 'true'
+  setup-infra:
+    if: needs.detect-changes.outputs.any_deploy == 'true'
     needs: [build-and-test, detect-changes]
     runs-on: ubuntu-latest
     permissions:
@@ -97,38 +116,65 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION || 'us-west-2' }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Ensure infrastructure exists
+        id: infra
+        run: bash scripts/ensure-infra.sh
+
+  deploy-admin-api:
+    if: needs.detect-changes.outputs.admin_api == 'true'
+    needs: [detect-changes, setup-infra]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
       - name: Login to ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, push & deploy admin-api
+      - name: Build & push image
         env:
           ECR: ${{ steps.ecr.outputs.registry }}
-          REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
         run: |
           IMAGE="${ECR}/lyx-production/admin-api:${GITHUB_SHA::8}"
           docker build -t "$IMAGE" -f platform/admin-api/Dockerfile platform/admin-api/
           docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
-          ARN=$(aws apprunner list-services --region "$REGION" \
-            --query "ServiceSummaryList[?contains(ServiceName,'api')&&!contains(ServiceName,'ui')&&!contains(ServiceName,'ssr')].ServiceArn" \
-            --output text)
+      - name: Deploy admin-api
+        env:
+          REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET="lyx-bundles-${ACCOUNT_ID}-production"
 
-          ROLE_ARN=$(aws iam get-role --role-name lyx-apprunner-ecr --query "Role.Arn" --output text)
-          INSTANCE_ROLE=$(aws iam get-role --role-name lyx-apprunner-instance --query "Role.Arn" --output text)
-
-          aws apprunner update-service --service-arn "$ARN" \
-            --source-configuration "{\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"$ROLE_ARN\"},\"AutoDeploymentsEnabled\":false,\"ImageRepository\":{\"ImageIdentifier\":\"$IMAGE\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"4000\",\"RuntimeEnvironmentVariables\":{\"NODE_ENV\":\"production\",\"PORT\":\"4000\",\"MONGO_URI\":\"${{ secrets.MONGO_URI }}\",\"MINIO_ENDPOINT\":\"s3\",\"MINIO_PORT\":\"443\",\"MINIO_ACCESS_KEY\":\"none\",\"MINIO_SECRET_KEY\":\"none\",\"MINIO_USE_SSL\":\"true\",\"MINIO_BUCKET\":\"${{ secrets.S3_BUCKET }}\",\"JWT_SECRET\":\"${{ secrets.JWT_SECRET }}\",\"CORS_ORIGIN\":\"*\",\"AWS_REGION\":\"$REGION\"}}}}" \
-            --instance-configuration "{\"InstanceRoleArn\":\"$INSTANCE_ROLE\"}" \
-            --region "$REGION" --output text
+          bash scripts/ensure-service.sh \
+            "lyx-production-admin-api" \
+            "$IMAGE" \
+            "4000" \
+            "{\"NODE_ENV\":\"production\",\"PORT\":\"4000\",\"MONGO_URI\":\"${{ secrets.MONGO_URI }}\",\"MINIO_ENDPOINT\":\"s3\",\"MINIO_PORT\":\"443\",\"MINIO_ACCESS_KEY\":\"none\",\"MINIO_SECRET_KEY\":\"none\",\"MINIO_USE_SSL\":\"true\",\"MINIO_BUCKET\":\"${BUCKET}\",\"JWT_SECRET\":\"${{ secrets.JWT_SECRET }}\",\"CORS_ORIGIN\":\"*\",\"AWS_REGION\":\"${REGION}\"}" \
+            "true"
 
           echo "✅ admin-api deployed"
 
   deploy-admin-ui:
-    if: needs.detect-changes.outputs.admin_ui == 'true'
-    needs: [build-and-test, detect-changes]
+    if: >-
+      always() &&
+      needs.detect-changes.outputs.admin_ui == 'true' &&
+      needs.setup-infra.result == 'success' &&
+      (needs.deploy-admin-api.result == 'success' || needs.deploy-admin-api.result == 'skipped')
+    needs: [detect-changes, setup-infra, deploy-admin-api]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -141,40 +187,50 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION || 'us-west-2' }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
       - name: Login to ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, push & deploy admin-ui
+      - name: Build & push image
         env:
           ECR: ${{ steps.ecr.outputs.registry }}
-          REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
         run: |
           IMAGE="${ECR}/lyx-production/admin-ui:${GITHUB_SHA::8}"
           docker build -t "$IMAGE" -f platform/admin-ui/Dockerfile.apprunner platform/admin-ui/
           docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
-          ARN=$(aws apprunner list-services --region "$REGION" \
-            --query "ServiceSummaryList[?contains(ServiceName,'admin-ui')].ServiceArn" \
-            --output text)
-
-          ROLE_ARN=$(aws iam get-role --role-name lyx-apprunner-ecr --query "Role.Arn" --output text)
-
+      - name: Deploy admin-ui
+        env:
+          REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+        run: |
           API_URL=$(aws apprunner list-services --region "$REGION" \
-            --query "ServiceSummaryList[?contains(ServiceName,'api')&&!contains(ServiceName,'ui')&&!contains(ServiceName,'ssr')].ServiceUrl" \
-            --output text)
+            --query "ServiceSummaryList[?contains(ServiceName,'admin-api')].ServiceUrl" \
+            --output text 2>/dev/null || echo "")
 
-          aws apprunner update-service --service-arn "$ARN" \
-            --source-configuration "{\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"$ROLE_ARN\"},\"AutoDeploymentsEnabled\":false,\"ImageRepository\":{\"ImageIdentifier\":\"$IMAGE\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"4001\",\"RuntimeEnvironmentVariables\":{\"API_URL\":\"https://$API_URL\"}}}}" \
-            --region "$REGION" --output text
+          if [ -z "$API_URL" ] || [ "$API_URL" = "None" ]; then
+            API_URL="placeholder.example.com"
+            echo "⚠️  admin-api not found yet, using placeholder"
+          fi
+
+          bash scripts/ensure-service.sh \
+            "lyx-production-admin-ui" \
+            "$IMAGE" \
+            "4001" \
+            "{\"API_URL\":\"https://${API_URL}\"}" \
+            "false"
 
           echo "✅ admin-ui deployed"
 
   deploy-ssr:
-    if: needs.detect-changes.outputs.ssr == 'true'
-    needs: [build-and-test, detect-changes]
+    if: >-
+      always() &&
+      needs.detect-changes.outputs.ssr == 'true' &&
+      needs.setup-infra.result == 'success' &&
+      (needs.deploy-admin-api.result == 'success' || needs.deploy-admin-api.result == 'skipped')
+    needs: [detect-changes, setup-infra, deploy-admin-api]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -198,35 +254,64 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION || 'us-west-2' }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
       - name: Login to ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, push & deploy SSR
+      - name: Build & push image
         env:
           ECR: ${{ steps.ecr.outputs.registry }}
-          REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
         run: |
           IMAGE="${ECR}/lyx-production/ssr:${GITHUB_SHA::8}"
           docker build -t "$IMAGE" -f platform/ssr/Dockerfile .
           docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
-          ARN=$(aws apprunner list-services --region "$REGION" \
-            --query "ServiceSummaryList[?contains(ServiceName,'ssr')].ServiceArn" \
-            --output text)
-
-          ROLE_ARN=$(aws iam get-role --role-name lyx-apprunner-ecr --query "Role.Arn" --output text)
-          INSTANCE_ROLE=$(aws iam get-role --role-name lyx-apprunner-instance --query "Role.Arn" --output text)
+      - name: Deploy SSR
+        env:
+          REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET="lyx-bundles-${ACCOUNT_ID}-production"
 
           API_URL=$(aws apprunner list-services --region "$REGION" \
-            --query "ServiceSummaryList[?contains(ServiceName,'api')&&!contains(ServiceName,'ui')&&!contains(ServiceName,'ssr')].ServiceUrl" \
-            --output text)
+            --query "ServiceSummaryList[?contains(ServiceName,'admin-api')].ServiceUrl" \
+            --output text 2>/dev/null || echo "")
 
-          aws apprunner update-service --service-arn "$ARN" \
-            --source-configuration "{\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"$ROLE_ARN\"},\"AutoDeploymentsEnabled\":false,\"ImageRepository\":{\"ImageIdentifier\":\"$IMAGE\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"4002\",\"RuntimeEnvironmentVariables\":{\"API_URL\":\"https://$API_URL\",\"PORT\":\"4002\",\"S3_BUCKET\":\"${{ secrets.S3_BUCKET }}\",\"AWS_REGION\":\"$REGION\"}}}}" \
-            --instance-configuration "{\"InstanceRoleArn\":\"$INSTANCE_ROLE\"}" \
-            --region "$REGION" --output text
+          if [ -z "$API_URL" ] || [ "$API_URL" = "None" ]; then
+            API_URL="placeholder.example.com"
+            echo "⚠️  admin-api not found yet, using placeholder"
+          fi
+
+          bash scripts/ensure-service.sh \
+            "lyx-production-ssr" \
+            "$IMAGE" \
+            "4002" \
+            "{\"API_URL\":\"https://${API_URL}\",\"PORT\":\"4002\",\"S3_BUCKET\":\"${BUCKET}\",\"AWS_REGION\":\"${REGION}\"}" \
+            "true"
 
           echo "✅ ssr deployed"
+
+  show-urls:
+    if: always() && needs.detect-changes.outputs.any_deploy == 'true'
+    needs: [detect-changes, deploy-admin-api, deploy-admin-ui, deploy-ssr]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Show service URLs
+        run: |
+          echo ""
+          echo "═══════════════════════════════════════"
+          echo "  Lyx Services"
+          echo "═══════════════════════════════════════"
+          aws apprunner list-services --region "${{ secrets.AWS_REGION || 'us-east-1' }}" \
+            --query "ServiceSummaryList[?starts_with(ServiceName,'lyx')].[ServiceName,Status,ServiceUrl]" \
+            --output table
