@@ -6,6 +6,7 @@ WORKDIR /app
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 COPY packages/types/package.json packages/types/
+COPY packages/sdk/package.json packages/sdk/
 COPY packages/vite-plugin/package.json packages/vite-plugin/
 COPY packages/shell/package.json packages/shell/
 
@@ -13,6 +14,9 @@ RUN pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
 
 COPY packages/types/src packages/types/src
 COPY packages/types/tsconfig.json packages/types/
+
+COPY packages/sdk/src packages/sdk/src
+COPY packages/sdk/tsconfig.json packages/sdk/
 
 COPY packages/vite-plugin/src packages/vite-plugin/src
 COPY packages/vite-plugin/tsconfig.json packages/vite-plugin/tsconfig.json
@@ -24,6 +28,8 @@ COPY packages/shell/tsconfig.json packages/shell/
 COPY packages/shell/vite.config.ts packages/shell/
 COPY packages/shell/vite.ssr.config.ts packages/shell/
 
+RUN cd packages/types && pnpm build
+RUN cd packages/sdk && pnpm build
 RUN cd packages/vite-plugin && pnpm build
 RUN cd packages/shell && pnpm build:all
 

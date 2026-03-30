@@ -155,6 +155,16 @@ pnpm nx run-many -t build --projects='@lyx/types,@lyx/sdk,...,@lyx/admin-ui'
 
 ---
 
+### SSR Dockerfile fails to resolve @lyx/sdk
+
+**Category**: CI / Docker
+**Symptom**: `Rollup failed to resolve import "@lyx/sdk" from "MFESlot.tsx"` during `pnpm build:all` in the SSR Dockerfile.
+**Cause**: The SSR Dockerfile did not include `@lyx/sdk` in the build stage (missing package.json copy, source copy, and build step). When `@lyx/shell` gained a dependency on `@lyx/sdk` for observability, the Docker build broke.
+**Fix**: Update `platform/ssr/Dockerfile` to: (1) COPY `packages/sdk/package.json`, (2) COPY `packages/sdk/src` and `tsconfig.json`, (3) add `RUN cd packages/sdk && pnpm build` before the shell build. Also ensure `RUN cd packages/types && pnpm build` runs before the SDK build since the SDK depends on types.
+**Prevention**: When adding a new workspace dependency to the Shell, always update the SSR Dockerfile to include the new package in the multi-stage build. The build order must respect the dependency chain: types -> sdk -> vite-plugin -> shell.
+
+---
+
 ### MFE Health Dashboard Shows No Data
 
 **Category**: Runtime
