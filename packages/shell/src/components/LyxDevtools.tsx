@@ -67,7 +67,7 @@ export function LyxDevtools() {
     window.addEventListener("popstate", popHandler);
 
     const origPush = window.history.pushState.bind(window.history);
-    window.history.pushState = function (...args: any[]) {
+    window.history.pushState = function (...args: [any, string, string?]) {
       origPush(...args);
       setNavLog((prev) => [
         { path: String(args[2] ?? window.location.pathname), ts: Date.now() },

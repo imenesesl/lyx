@@ -31,7 +31,9 @@ jobs:
           --projects='@lyx/types,@lyx/sdk,@lyx/registry,@lyx/vite-plugin,@lyx/cli,@lyx/shell,@lyx/admin-api,@lyx/admin-ui'
 
       - name: Lint framework packages
-        run: pnpm nx run-many -t lint --projects='@lyx/*' || true
+        run: >
+          pnpm nx run-many -t lint
+          --projects='@lyx/types,@lyx/sdk,@lyx/registry,@lyx/vite-plugin,@lyx/cli,@lyx/shell'
 
       - name: Test admin-api
         run: pnpm nx run @lyx/admin-api:test

@@ -196,9 +196,8 @@ async function loadMFEComponent(
     registeredRemotes.set(key, entryUrl);
   }
 
-  const mod = await mf.loadRemote<{ default: ComponentType<any> }>(
-    `${key}/default`
-  );
+  const mod = await mf.loadRemote(`${key}/default`) as
+    { default: ComponentType<any> } | null;
 
   if (!mod) return null;
   return mod.default ?? (mod as any);
