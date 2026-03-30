@@ -10,13 +10,15 @@ import { MFEList } from "./pages/MFEList";
 import { MFEDetail } from "./pages/MFEDetail";
 import { Layouts } from "./pages/Layouts";
 import { LayoutBuilder } from "./pages/LayoutBuilder";
+import { Settings } from "./pages/Settings";
+import { PageSkeleton } from "./components/Skeleton";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { account, loading } = useAuth();
   if (loading) {
     return (
-      <div style={{ display: "grid", placeItems: "center", height: "100vh" }}>
-        <p style={{ color: "var(--text-secondary)" }}>Loading...</p>
+      <div style={{ display: "grid", placeItems: "center", height: "100vh", padding: 32 }}>
+        <PageSkeleton />
       </div>
     );
   }
@@ -36,28 +38,14 @@ export function App() {
     <Routes>
       <Route
         path="/login"
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        }
+        element={<PublicRoute><Login /></PublicRoute>}
       />
       <Route
         path="/register"
-        element={
-          <PublicRoute>
-            <Register />
-          </PublicRoute>
-        }
+        element={<PublicRoute><Register /></PublicRoute>}
       />
 
-      <Route
-        element={
-          <ProtectedRoute>
-            <AppShell />
-          </ProtectedRoute>
-        }
-      >
+      <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="apps" element={<AppList />} />
         <Route path="apps/:id" element={<AppDetail />} />
@@ -66,6 +54,7 @@ export function App() {
         <Route path="layouts" element={<Layouts />} />
         <Route path="layouts/new" element={<LayoutBuilder />} />
         <Route path="layouts/:id/edit" element={<LayoutBuilder />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

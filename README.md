@@ -234,45 +234,37 @@ lyx deploy --all
 
 ### Prerequisites
 
-1. AWS account with configured credentials
-2. MongoDB Atlas (free tier): https://cloud.mongodb.com
-   - Create a FREE M0 cluster in us-west-2
-   - Create a database user
-   - Network Access: allow `0.0.0.0/0`
-   - Copy the connection string
+1. **AWS account** — [create one here](https://aws.amazon.com/)
+2. **MongoDB Atlas** (free tier) — [https://cloud.mongodb.com](https://cloud.mongodb.com)
+   - Create a FREE M0 cluster in **us-west-2**
+   - Create a database user (save the username and password)
+   - Go to **Network Access** → **Add IP Address** → **Allow Access from Anywhere** (`0.0.0.0/0`)
+   - Go to **Database** → **Connect** → **Drivers** → copy the connection string
 
-### Deploy (one command)
+### First deploy (one command)
 
 ```bash
-# Configure AWS credentials
-aws configure sso
+# Set your AWS credentials (SSO or environment variables)
+source ~/.lyx-aws   # if you previously saved them
 # or
 export AWS_ACCESS_KEY_ID="..."
 export AWS_SECRET_ACCESS_KEY="..."
-export AWS_SESSION_TOKEN="..."
+export AWS_SESSION_TOKEN="..."   # only for SSO temporary credentials
 
-# Configure MongoDB
+# Set MongoDB connection string
 export MONGO_URI="mongodb+srv://user:pass@cluster.mongodb.net/lyx"
 
-# Deploy
+# Deploy everything
 bash scripts/deploy-aws.sh deploy
 ```
 
-The script automatically:
-- Verifies AWS credentials
-- Creates IAM roles, S3 bucket, ECR repositories
-- Builds 3 Docker images (admin-api, admin-ui, ssr)
-- Pushes to ECR
-- Creates 3 App Runner services with auto-scaling
-- Displays the URLs when finished
+The script automatically creates IAM roles, S3 bucket, ECR repositories, builds 3 Docker images, pushes to ECR, and creates 3 App Runner services.
 
-### Update production (new code)
+### Update production (manual)
 
 ```bash
 bash scripts/deploy-aws.sh update
 ```
-
-Rebuilds and redeploys the services with the current code.
 
 ### Check status
 
@@ -311,6 +303,93 @@ bash scripts/destroy-aws.sh
          │  S3     │    │  MongoDB  │   │   ECR     │
          │ Bundles │    │  Atlas    │   │  Images   │
          └─────────┘    └───────────┘   └───────────┘
+```
+
+---
+
+## CI/CD — Automatic Deployment from GitHub
+
+Every push to `main` automatically runs tests and deploys **only the services that changed**. No manual deploys needed.
+
+### Step 1 — Create an IAM User for CI
+
+GitHub needs permanent AWS credentials (not SSO, which expires every hour).
+
+1. Go to the [AWS IAM Console](https://console.aws.amazon.com/iam)
+2. In the left menu, click **Users**
+3. Click **Create user**
+4. User name: `lyx-ci-deploy`
+5. **Do NOT** check "Provide user access to the AWS Management Console"
+6. Click **Next**
+7. Select **Attach policies directly**
+8. Search and check these 3 policies:
+   - `AmazonEC2ContainerRegistryPowerUser`
+   - `AWSAppRunnerFullAccess`
+   - `IAMReadOnlyAccess`
+9. Click **Next** → **Create user**
+10. Click on the user `lyx-ci-deploy` you just created
+11. Go to the **Security credentials** tab
+12. Scroll down to **Access keys** → click **Create access key**
+13. Select **Command Line Interface (CLI)**
+14. Check the confirmation checkbox at the bottom
+15. Click **Next** → **Create access key**
+16. **Copy both values** — you will need them in the next step:
+    - **Access key ID** (starts with `AKIA...`)
+    - **Secret access key** (click "Show" to reveal)
+
+### Step 2 — Add secrets to GitHub
+
+Go to your repository on GitHub → **Settings** → **Secrets and variables** → **Actions**.
+
+#### Secrets (click "New repository secret" for each)
+
+| Name | Value | Where to find it |
+|------|-------|-------------------|
+| `AWS_ACCESS_KEY_ID` | `AKIA...` | From Step 1 (IAM User access key) |
+| `AWS_SECRET_ACCESS_KEY` | The secret key | From Step 1 (IAM User secret key) |
+| `MONGO_URI` | `mongodb+srv://user:pass@cluster.mongodb.net/lyx?retryWrites=true&w=majority` | MongoDB Atlas → Connect → Drivers |
+| `JWT_SECRET` | Any random string (e.g. `openssl rand -base64 32`) | You choose this — used to sign auth tokens |
+| `S3_BUCKET` | `lyx-bundles-ACCOUNT_ID-production` | Created by `deploy-aws.sh` — check with `aws s3 ls` |
+
+#### Variables (click the "Variables" tab → "New repository variable")
+
+| Name | Value |
+|------|-------|
+| `AWS_REGION` | `us-west-2` |
+
+### Step 3 — Push to main
+
+That's it. Every push to `main` will:
+
+1. **Build** — compile all framework packages
+2. **Lint** — type-check all packages
+3. **Test** — run admin-api and shell tests
+4. **Detect changes** — compare files with the previous commit
+5. **Deploy only what changed** — in parallel:
+
+| Files changed | Service deployed |
+|---------------|-----------------|
+| `platform/admin-api/*` | admin-api only |
+| `platform/admin-ui/*` | admin-ui only |
+| `platform/ssr/*` or `packages/shell/*` | SSR only |
+| Multiple folders | Only the affected services (in parallel) |
+| `packages/sdk/*`, `packages/cli/*`, etc. | No deploy (only build + test) |
+
+### How to trigger a full deploy
+
+If you need to redeploy everything (e.g. after changing secrets):
+
+```bash
+# Make an empty commit
+git commit --allow-empty -m "redeploy all"
+git push
+```
+
+This won't trigger any service deploy (no files changed). To force all 3, touch one file in each:
+
+```bash
+touch platform/admin-api/Dockerfile platform/admin-ui/serve.cjs platform/ssr/server.js
+git add -A && git commit -m "trigger full deploy" && git push
 ```
 
 ---

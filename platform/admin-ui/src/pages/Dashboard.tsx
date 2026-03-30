@@ -2,196 +2,130 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../context/auth";
+import { useRefresh } from "../components/AppShell";
+import { CardSkeleton, ListSkeleton } from "../components/Skeleton";
 
-interface AppItem {
-  _id: string;
-  name: string;
-  slug: string;
-  description: string;
-  createdAt: string;
-}
-
-interface MFEItem {
-  _id: string;
-  name: string;
-}
+interface AppItem { _id: string; name: string; slug: string; description: string; createdAt: string; }
+interface MFEItem { _id: string; name: string; description: string; archived: boolean; }
 
 export function Dashboard() {
-  const { account, refreshAccount } = useAuth();
+  const { account } = useAuth();
+  const { refreshKey } = useRefresh();
   const [apps, setApps] = useState<AppItem[]>([]);
   const [mfes, setMfes] = useState<MFEItem[]>([]);
-  const [aliasInput, setAliasInput] = useState("");
-  const [aliasError, setAliasError] = useState("");
-  const [aliasSaving, setAliasSaving] = useState(false);
-  const [aliasSuccess, setAliasSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<AppItem[]>("/apps").then(setApps).catch(() => {});
-    api.get<MFEItem[]>("/mfes").then(setMfes).catch(() => {});
-  }, []);
+    setLoading(true);
+    Promise.all([
+      api.get<AppItem[]>("/apps"),
+      api.get<MFEItem[]>("/mfes"),
+    ]).then(([a, m]) => { setApps(a); setMfes(m); }).catch(() => {}).finally(() => setLoading(false));
+  }, [refreshKey]);
 
-  useEffect(() => {
-    if (account?.alias) setAliasInput(account.alias);
-  }, [account?.alias]);
-
-  async function handleAliasSave() {
-    setAliasError("");
-    setAliasSuccess(false);
-    setAliasSaving(true);
-    try {
-      await api.put("/auth/alias", { alias: aliasInput });
-      await refreshAccount();
-      setAliasSuccess(true);
-      setTimeout(() => setAliasSuccess(false), 3000);
-    } catch (err: any) {
-      setAliasError(err.message);
-    } finally {
-      setAliasSaving(false);
-    }
-  }
+  const activeMfes = mfes.filter((m) => !m.archived);
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h1>Welcome, {account?.name}</h1>
-          <p style={{ color: "var(--text-secondary)", marginTop: 4 }}>
-            Manage your micro frontend applications
-          </p>
-          <p
-            style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 6, fontFamily: "monospace", cursor: "pointer" }}
-            title="Click to copy"
-            onClick={() => { navigator.clipboard.writeText(account?.alias || account?.id || ""); }}
-          >
-            URL namespace: /{account?.alias || account?.id}/
-          </p>
+          <h1>Overview</h1>
+          <p className="page-subtitle">Welcome back, {account?.name}</p>
         </div>
+        <Link to="/apps" className="btn btn-primary">Create App</Link>
       </div>
 
-      <div className="grid grid-3" style={{ marginBottom: 32 }}>
-        <div className="card">
-          <div style={{ fontSize: 32, fontWeight: 700, color: "var(--accent)" }}>
-            {apps.length}
-          </div>
-          <div style={{ color: "var(--text-secondary)", fontSize: 14, marginTop: 4 }}>
-            Applications
-          </div>
-        </div>
-        <div className="card">
-          <div style={{ fontSize: 32, fontWeight: 700, color: "var(--success)" }}>
-            {mfes.length}
-          </div>
-          <div style={{ color: "var(--text-secondary)", fontSize: 14, marginTop: 4 }}>
-            Micro Frontends
-          </div>
-        </div>
-        <div className="card">
-          <div style={{ fontSize: 32, fontWeight: 700, color: "var(--warning)" }}>
-            {apps.filter((a) => a.description).length}
-          </div>
-          <div style={{ color: "var(--text-secondary)", fontSize: 14, marginTop: 4 }}>
-            Active Projects
-          </div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Custom URL Namespace</h3>
-        <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 12 }}>
-          Your apps are served at <code style={{ background: "var(--bg-tertiary)", padding: "2px 6px", borderRadius: 4 }}>/{account?.alias || account?.id}/{"{slug}"}/</code>.
-          Set a custom alias to replace the default ID.
-        </p>
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-          <div style={{ flex: 1 }}>
-            <input
-              className="input"
-              value={aliasInput}
-              onChange={(e) => setAliasInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-              placeholder="my-company"
-              style={{ width: "100%" }}
-              maxLength={32}
-            />
-            <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, display: "block" }}>
-              3-32 characters, lowercase letters, numbers, hyphens. Example: <strong>my-team</strong>
-            </span>
-          </div>
-          <button
-            className="btn btn-primary"
-            onClick={handleAliasSave}
-            disabled={aliasSaving || !aliasInput || aliasInput.length < 3 || aliasInput === account?.alias}
-          >
-            {aliasSaving ? "Saving..." : "Save"}
-          </button>
-        </div>
-        {aliasError && <p className="error-text" style={{ marginTop: 8 }}>{aliasError}</p>}
-        {aliasSuccess && <p style={{ color: "var(--success)", fontSize: 13, marginTop: 8 }}>Alias updated! Your apps are now at /{aliasInput}/</p>}
-      </div>
-
-      <div style={{ display: "flex", gap: 24 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600 }}>Recent Apps</h2>
-            <Link to="/apps" className="btn btn-secondary btn-sm">View all</Link>
-          </div>
-          {apps.length === 0 ? (
-            <div className="card empty-state">
-              <h3>No apps yet</h3>
-              <p>Create your first application to get started.</p>
-              <Link to="/apps" className="btn btn-primary" style={{ marginTop: 16 }}>
-                Create App
-              </Link>
+      {loading ? (
+        <>
+          <CardSkeleton count={4} />
+          <div style={{ marginTop: 24 }}><ListSkeleton /></div>
+        </>
+      ) : (
+        <>
+          <div className="grid grid-4" style={{ marginBottom: 28 }}>
+            <div className="stat-card">
+              <div className="stat-icon" style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>▦</div>
+              <div>
+                <div className="stat-value">{apps.length}</div>
+                <div className="stat-label">Applications</div>
+              </div>
             </div>
-          ) : (
-            apps.slice(0, 5).map((app) => (
-              <Link
-                key={app._id}
-                to={`/apps/${app._id}`}
-                className="card card-hover"
-                style={{ display: "block", marginBottom: 12 }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{app.name}</div>
-                    <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
-                      /{app.slug}
-                    </div>
-                  </div>
-                  <span className="badge badge-accent">
-                    {new Date(app.createdAt).toLocaleDateString()}
-                  </span>
+            <div className="stat-card">
+              <div className="stat-icon" style={{ background: "var(--success-muted)", color: "var(--success)" }}>◱</div>
+              <div>
+                <div className="stat-value">{activeMfes.length}</div>
+                <div className="stat-label">Active MFEs</div>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon" style={{ background: "var(--warning-muted)", color: "var(--warning)" }}>⊞</div>
+              <div>
+                <div className="stat-value">{mfes.length - activeMfes.length}</div>
+                <div className="stat-label">Archived</div>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon" style={{ background: "rgba(139, 92, 246, 0.12)", color: "#a78bfa" }}>◫</div>
+              <div>
+                <div className="stat-value">{apps.filter((a) => a.description).length}</div>
+                <div className="stat-label">Documented</div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600 }}>Recent Applications</h3>
+                <Link to="/apps" style={{ fontSize: 12, color: "var(--text-muted)" }}>View all →</Link>
+              </div>
+              {apps.length === 0 ? (
+                <div className="card empty-state">
+                  <h3>No apps yet</h3>
+                  <p>Create your first application to get started.</p>
                 </div>
-              </Link>
-            ))
-          )}
-        </div>
-
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600 }}>Recent MFEs</h2>
-            <Link to="/mfes" className="btn btn-secondary btn-sm">View all</Link>
-          </div>
-          {mfes.length === 0 ? (
-            <div className="card empty-state">
-              <h3>No MFEs yet</h3>
-              <p>Register your first micro frontend.</p>
-              <Link to="/mfes" className="btn btn-primary" style={{ marginTop: 16 }}>
-                Add MFE
-              </Link>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {apps.slice(0, 5).map((app) => (
+                    <Link key={app._id} to={`/apps/${app._id}`} className="card card-hover" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 14 }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{app.name}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace", marginTop: 2 }}>/{app.slug}</div>
+                      </div>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{new Date(app.createdAt).toLocaleDateString()}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            mfes.slice(0, 5).map((mfe) => (
-              <Link
-                key={mfe._id}
-                to={`/mfes/${mfe._id}`}
-                className="card card-hover"
-                style={{ display: "block", marginBottom: 12 }}
-              >
-                <div style={{ fontWeight: 600 }}>{mfe.name}</div>
-              </Link>
-            ))
-          )}
-        </div>
-      </div>
+
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600 }}>Micro Frontends</h3>
+                <Link to="/mfes" style={{ fontSize: 12, color: "var(--text-muted)" }}>View all →</Link>
+              </div>
+              {mfes.length === 0 ? (
+                <div className="card empty-state">
+                  <h3>No MFEs yet</h3>
+                  <p>Register your first micro frontend.</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {mfes.slice(0, 5).map((mfe) => (
+                    <Link key={mfe._id} to={`/mfes/${mfe._id}`} className="card card-hover" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 14 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontWeight: 600, fontSize: 14 }}>{mfe.name}</span>
+                        {mfe.archived && <span className="badge badge-warning">archived</span>}
+                      </div>
+                      {mfe.description && <span style={{ fontSize: 11, color: "var(--text-muted)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mfe.description}</span>}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -41,16 +41,192 @@ jobs:
       - name: Test shell
         run: pnpm nx run @lyx/shell:test
 
-  docker-build:
+  detect-changes:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    outputs:
+      admin_api: ${{ steps.changes.outputs.admin_api }}
+      admin_ui: ${{ steps.changes.outputs.admin_ui }}
+      ssr: ${{ steps.changes.outputs.ssr }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed paths
+        id: changes
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          admin_api=false
+          admin_ui=false
+          ssr=false
+
+          if echo "$CHANGED" | grep -qE '^platform/admin-api/'; then
+            admin_api=true
+          fi
+
+          if echo "$CHANGED" | grep -qE '^platform/admin-ui/'; then
+            admin_ui=true
+          fi
+
+          if echo "$CHANGED" | grep -qE '^(platform/ssr/|packages/shell/)'; then
+            ssr=true
+          fi
+
+          echo "admin_api=$admin_api" >> $GITHUB_OUTPUT
+          echo "admin_ui=$admin_ui" >> $GITHUB_OUTPUT
+          echo "ssr=$ssr" >> $GITHUB_OUTPUT
+          echo ""
+          echo "Deploy: api=$admin_api ui=$admin_ui ssr=$ssr"
+
+  deploy-admin-api:
+    if: needs.detect-changes.outputs.admin_api == 'true'
+    needs: [build-and-test, detect-changes]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build admin-api image
-        run: docker build -f platform/admin-api/Dockerfile platform/admin-api/
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'us-west-2' }}
 
-      - name: Build admin-ui image
-        run: docker build -f platform/admin-ui/Dockerfile platform/admin-ui/
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build SSR image
-        run: docker build -f platform/ssr/Dockerfile .
+      - name: Build, push & deploy admin-api
+        env:
+          ECR: ${{ steps.ecr.outputs.registry }}
+          REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
+        run: |
+          IMAGE="${ECR}/lyx-production/admin-api:${GITHUB_SHA::8}"
+          docker build -t "$IMAGE" -f platform/admin-api/Dockerfile platform/admin-api/
+          docker push "$IMAGE"
+
+          ARN=$(aws apprunner list-services --region "$REGION" \
+            --query "ServiceSummaryList[?contains(ServiceName,'api')&&!contains(ServiceName,'ui')&&!contains(ServiceName,'ssr')].ServiceArn" \
+            --output text)
+
+          ROLE_ARN=$(aws iam get-role --role-name lyx-apprunner-ecr --query "Role.Arn" --output text)
+          INSTANCE_ROLE=$(aws iam get-role --role-name lyx-apprunner-instance --query "Role.Arn" --output text)
+
+          aws apprunner update-service --service-arn "$ARN" \
+            --source-configuration "{\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"$ROLE_ARN\"},\"AutoDeploymentsEnabled\":false,\"ImageRepository\":{\"ImageIdentifier\":\"$IMAGE\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"4000\",\"RuntimeEnvironmentVariables\":{\"NODE_ENV\":\"production\",\"PORT\":\"4000\",\"MONGO_URI\":\"${{ secrets.MONGO_URI }}\",\"MINIO_ENDPOINT\":\"s3\",\"MINIO_PORT\":\"443\",\"MINIO_ACCESS_KEY\":\"none\",\"MINIO_SECRET_KEY\":\"none\",\"MINIO_USE_SSL\":\"true\",\"MINIO_BUCKET\":\"${{ secrets.S3_BUCKET }}\",\"JWT_SECRET\":\"${{ secrets.JWT_SECRET }}\",\"CORS_ORIGIN\":\"*\",\"AWS_REGION\":\"$REGION\"}}}}" \
+            --instance-configuration "{\"InstanceRoleArn\":\"$INSTANCE_ROLE\"}" \
+            --region "$REGION" --output text
+
+          echo "✅ admin-api deployed"
+
+  deploy-admin-ui:
+    if: needs.detect-changes.outputs.admin_ui == 'true'
+    needs: [build-and-test, detect-changes]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'us-west-2' }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, push & deploy admin-ui
+        env:
+          ECR: ${{ steps.ecr.outputs.registry }}
+          REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
+        run: |
+          IMAGE="${ECR}/lyx-production/admin-ui:${GITHUB_SHA::8}"
+          docker build -t "$IMAGE" -f platform/admin-ui/Dockerfile.apprunner platform/admin-ui/
+          docker push "$IMAGE"
+
+          ARN=$(aws apprunner list-services --region "$REGION" \
+            --query "ServiceSummaryList[?contains(ServiceName,'admin-ui')].ServiceArn" \
+            --output text)
+
+          ROLE_ARN=$(aws iam get-role --role-name lyx-apprunner-ecr --query "Role.Arn" --output text)
+
+          API_URL=$(aws apprunner list-services --region "$REGION" \
+            --query "ServiceSummaryList[?contains(ServiceName,'api')&&!contains(ServiceName,'ui')&&!contains(ServiceName,'ssr')].ServiceUrl" \
+            --output text)
+
+          aws apprunner update-service --service-arn "$ARN" \
+            --source-configuration "{\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"$ROLE_ARN\"},\"AutoDeploymentsEnabled\":false,\"ImageRepository\":{\"ImageIdentifier\":\"$IMAGE\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"4001\",\"RuntimeEnvironmentVariables\":{\"API_URL\":\"https://$API_URL\"}}}}" \
+            --region "$REGION" --output text
+
+          echo "✅ admin-ui deployed"
+
+  deploy-ssr:
+    if: needs.detect-changes.outputs.ssr == 'true'
+    needs: [build-and-test, detect-changes]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'us-west-2' }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, push & deploy SSR
+        env:
+          ECR: ${{ steps.ecr.outputs.registry }}
+          REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
+        run: |
+          IMAGE="${ECR}/lyx-production/ssr:${GITHUB_SHA::8}"
+          docker build -t "$IMAGE" -f platform/ssr/Dockerfile .
+          docker push "$IMAGE"
+
+          ARN=$(aws apprunner list-services --region "$REGION" \
+            --query "ServiceSummaryList[?contains(ServiceName,'ssr')].ServiceArn" \
+            --output text)
+
+          ROLE_ARN=$(aws iam get-role --role-name lyx-apprunner-ecr --query "Role.Arn" --output text)
+          INSTANCE_ROLE=$(aws iam get-role --role-name lyx-apprunner-instance --query "Role.Arn" --output text)
+
+          API_URL=$(aws apprunner list-services --region "$REGION" \
+            --query "ServiceSummaryList[?contains(ServiceName,'api')&&!contains(ServiceName,'ui')&&!contains(ServiceName,'ssr')].ServiceUrl" \
+            --output text)
+
+          aws apprunner update-service --service-arn "$ARN" \
+            --source-configuration "{\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"$ROLE_ARN\"},\"AutoDeploymentsEnabled\":false,\"ImageRepository\":{\"ImageIdentifier\":\"$IMAGE\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"4002\",\"RuntimeEnvironmentVariables\":{\"API_URL\":\"https://$API_URL\",\"PORT\":\"4002\",\"S3_BUCKET\":\"${{ secrets.S3_BUCKET }}\",\"AWS_REGION\":\"$REGION\"}}}}" \
+            --instance-configuration "{\"InstanceRoleArn\":\"$INSTANCE_ROLE\"}" \
+            --region "$REGION" --output text
+
+          echo "✅ ssr deployed"
