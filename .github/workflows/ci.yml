@@ -5,6 +5,15 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deploy all services'
+        type: boolean
+        default: true
+
+env:
+  AWS_REGION_VALUE: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
 jobs:
   build-and-test:
@@ -42,45 +51,75 @@ jobs:
         run: pnpm nx run @lyx/shell:test
 
   detect-changes:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [build-and-test]
     runs-on: ubuntu-latest
     outputs:
-      admin_api: ${{ steps.changes.outputs.admin_api }}
-      admin_ui: ${{ steps.changes.outputs.admin_ui }}
-      ssr: ${{ steps.changes.outputs.ssr }}
-      any_deploy: ${{ steps.changes.outputs.any_deploy }}
+      admin_api: ${{ steps.decide.outputs.admin_api }}
+      admin_ui: ${{ steps.decide.outputs.admin_ui }}
+      ssr: ${{ steps.decide.outputs.ssr }}
+      any_deploy: ${{ steps.decide.outputs.any_deploy }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
-      - name: Detect changed paths
-        id: changes
-        run: |
-          COMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo "1")
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION_VALUE }}
 
-          if [ "$COMMIT_COUNT" -le 1 ]; then
-            echo "First commit — deploying everything"
+      - name: Decide what to deploy
+        id: decide
+        run: |
+          deploy_all() {
+            echo "$1"
             echo "admin_api=true" >> $GITHUB_OUTPUT
             echo "admin_ui=true" >> $GITHUB_OUTPUT
             echo "ssr=true" >> $GITHUB_OUTPUT
             echo "any_deploy=true" >> $GITHUB_OUTPUT
             exit 0
+          }
+
+          # 1) Manual trigger → deploy all
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            deploy_all "Manual trigger — deploying everything"
           fi
 
-          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          # 2) Check if App Runner services exist; if not → deploy all
+          SVC_COUNT=$(aws apprunner list-services --region "${{ env.AWS_REGION_VALUE }}" \
+            --query "length(ServiceSummaryList[?starts_with(ServiceName,'lyx-production')])" \
+            --output text 2>/dev/null || echo "0")
 
+          if [ "$SVC_COUNT" = "0" ] || [ "$SVC_COUNT" = "None" ]; then
+            deploy_all "No services found — first deploy, deploying everything"
+          fi
+
+          if [ "$SVC_COUNT" -lt 3 ] 2>/dev/null; then
+            deploy_all "Only $SVC_COUNT/3 services found — deploying everything"
+          fi
+
+          # 3) First commit → deploy all
+          COMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo "1")
+          if [ "$COMMIT_COUNT" -le 1 ]; then
+            deploy_all "First commit — deploying everything"
+          fi
+
+          # 4) Check changed files
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
           if [ -z "$CHANGED" ]; then
-            echo "No changes or first push — deploying everything"
-            echo "admin_api=true" >> $GITHUB_OUTPUT
-            echo "admin_ui=true" >> $GITHUB_OUTPUT
-            echo "ssr=true" >> $GITHUB_OUTPUT
-            echo "any_deploy=true" >> $GITHUB_OUTPUT
-            exit 0
+            deploy_all "Could not diff — deploying everything"
           fi
 
           echo "Changed files:"
           echo "$CHANGED"
+
+          # Changes to CI/scripts/docker → deploy all
+          if echo "$CHANGED" | grep -qE '^(\.github/|scripts/|docker-compose|Dockerfile)'; then
+            deploy_all "Infrastructure/CI files changed — deploying everything"
+          fi
 
           admin_api=false
           admin_ui=false
@@ -103,7 +142,7 @@ jobs:
 
   setup-infra:
     if: needs.detect-changes.outputs.any_deploy == 'true'
-    needs: [build-and-test, detect-changes]
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -116,10 +155,9 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          aws-region: ${{ env.AWS_REGION_VALUE }}
 
       - name: Ensure infrastructure exists
-        id: infra
         run: bash scripts/ensure-infra.sh
 
   deploy-admin-api:
@@ -137,7 +175,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          aws-region: ${{ env.AWS_REGION_VALUE }}
 
       - name: Login to ECR
         id: ecr
@@ -153,8 +191,6 @@ jobs:
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
       - name: Deploy admin-api
-        env:
-          REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           BUCKET="lyx-bundles-${ACCOUNT_ID}-production"
@@ -163,7 +199,7 @@ jobs:
             "lyx-production-admin-api" \
             "$IMAGE" \
             "4000" \
-            "{\"NODE_ENV\":\"production\",\"PORT\":\"4000\",\"MONGO_URI\":\"${{ secrets.MONGO_URI }}\",\"MINIO_ENDPOINT\":\"s3\",\"MINIO_PORT\":\"443\",\"MINIO_ACCESS_KEY\":\"none\",\"MINIO_SECRET_KEY\":\"none\",\"MINIO_USE_SSL\":\"true\",\"MINIO_BUCKET\":\"${BUCKET}\",\"JWT_SECRET\":\"${{ secrets.JWT_SECRET }}\",\"CORS_ORIGIN\":\"*\",\"AWS_REGION\":\"${REGION}\"}" \
+            "{\"NODE_ENV\":\"production\",\"PORT\":\"4000\",\"MONGO_URI\":\"${{ secrets.MONGO_URI }}\",\"MINIO_ENDPOINT\":\"s3\",\"MINIO_PORT\":\"443\",\"MINIO_ACCESS_KEY\":\"none\",\"MINIO_SECRET_KEY\":\"none\",\"MINIO_USE_SSL\":\"true\",\"MINIO_BUCKET\":\"${BUCKET}\",\"JWT_SECRET\":\"${{ secrets.JWT_SECRET }}\",\"CORS_ORIGIN\":\"*\",\"AWS_REGION\":\"${{ env.AWS_REGION_VALUE }}\"}" \
             "true"
 
           echo "✅ admin-api deployed"
@@ -187,7 +223,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          aws-region: ${{ env.AWS_REGION_VALUE }}
 
       - name: Login to ECR
         id: ecr
@@ -203,10 +239,8 @@ jobs:
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
       - name: Deploy admin-ui
-        env:
-          REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
         run: |
-          API_URL=$(aws apprunner list-services --region "$REGION" \
+          API_URL=$(aws apprunner list-services --region "${{ env.AWS_REGION_VALUE }}" \
             --query "ServiceSummaryList[?contains(ServiceName,'admin-api')].ServiceUrl" \
             --output text 2>/dev/null || echo "")
 
@@ -254,7 +288,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          aws-region: ${{ env.AWS_REGION_VALUE }}
 
       - name: Login to ECR
         id: ecr
@@ -270,13 +304,11 @@ jobs:
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
       - name: Deploy SSR
-        env:
-          REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           BUCKET="lyx-bundles-${ACCOUNT_ID}-production"
 
-          API_URL=$(aws apprunner list-services --region "$REGION" \
+          API_URL=$(aws apprunner list-services --region "${{ env.AWS_REGION_VALUE }}" \
             --query "ServiceSummaryList[?contains(ServiceName,'admin-api')].ServiceUrl" \
             --output text 2>/dev/null || echo "")
 
@@ -289,7 +321,7 @@ jobs:
             "lyx-production-ssr" \
             "$IMAGE" \
             "4002" \
-            "{\"API_URL\":\"https://${API_URL}\",\"PORT\":\"4002\",\"S3_BUCKET\":\"${BUCKET}\",\"AWS_REGION\":\"${REGION}\"}" \
+            "{\"API_URL\":\"https://${API_URL}\",\"PORT\":\"4002\",\"S3_BUCKET\":\"${BUCKET}\",\"AWS_REGION\":\"${{ env.AWS_REGION_VALUE }}\"}" \
             "true"
 
           echo "✅ ssr deployed"
@@ -304,7 +336,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          aws-region: ${{ env.AWS_REGION_VALUE }}
 
       - name: Show service URLs
         run: |
@@ -312,6 +344,6 @@ jobs:
           echo "═══════════════════════════════════════"
           echo "  Lyx Services"
           echo "═══════════════════════════════════════"
-          aws apprunner list-services --region "${{ secrets.AWS_REGION || 'us-east-1' }}" \
+          aws apprunner list-services --region "${{ env.AWS_REGION_VALUE }}" \
             --query "ServiceSummaryList[?starts_with(ServiceName,'lyx')].[ServiceName,Status,ServiceUrl]" \
             --output table
