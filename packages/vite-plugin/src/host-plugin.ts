@@ -33,10 +33,7 @@ export function lyxHostPlugin(options: LyxHostPluginOptions = {}): Plugin[] {
     name: "lyx_shell",
     filename: "remoteEntry.js",
     remotes: {},
-    shared: {
-      react: { singleton: true, requiredVersion: false as any },
-      "react-dom": { singleton: true, requiredVersion: false as any },
-    },
+    shared: {},
   });
 
   return [lyxHost, ...(Array.isArray(mfPlugin) ? mfPlugin : [mfPlugin])];

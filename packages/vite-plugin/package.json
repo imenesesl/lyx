@@ -16,8 +16,8 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@module-federation/vite": "^1.13.0",
-    "@lyx/types": "workspace:*"
+    "@lyx/types": "workspace:*",
+    "@module-federation/vite": "^1.13.6"
   },
   "peerDependencies": {
     "vite": ">=5.0.0"
@@ -25,5 +25,8 @@
   "devDependencies": {
     "esbuild": "^0.25.0"
   },
-  "files": ["dist", "src"]
+  "files": [
+    "dist",
+    "src"
+  ]
 }
