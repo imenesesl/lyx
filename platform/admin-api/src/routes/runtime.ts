@@ -37,7 +37,8 @@ router.get("/:accountId/:slug/layout", async (req, res) => {
       return;
     }
 
-    res.json(config.layoutSnapshot);
+    const assignedSlots = config.assignments.map((a) => a.slotId);
+    res.json({ ...config.layoutSnapshot, assignedSlots });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }

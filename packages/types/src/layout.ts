@@ -12,4 +12,6 @@ export interface Layout {
   name: string;
   description?: string;
   regions: LayoutRegion[];
+  /** Slots that have an MFE assigned in the published config */
+  assignedSlots?: string[];
 }

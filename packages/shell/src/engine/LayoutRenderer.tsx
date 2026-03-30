@@ -21,6 +21,7 @@ interface LayoutRendererProps {
 }
 
 export function LayoutRenderer({ layout, registryUrl }: LayoutRendererProps) {
+  const assigned = new Set(layout.assignedSlots ?? []);
   const [slotOverrides, setSlotOverrides] = useState<Record<string, SlotOverride>>({});
 
   const handleNavigate = useCallback((payload: NavigatePayload) => {
@@ -75,6 +76,7 @@ export function LayoutRenderer({ layout, registryUrl }: LayoutRendererProps) {
           region={region}
           registryUrl={registryUrl}
           override={slotOverrides[region.slot]}
+          assigned={assigned}
         />
       ))}
 
@@ -92,6 +94,7 @@ export function LayoutRenderer({ layout, registryUrl }: LayoutRendererProps) {
               region={region}
               registryUrl={registryUrl}
               override={slotOverrides[region.slot]}
+              assigned={assigned}
             />
           ))}
         </div>
@@ -103,6 +106,7 @@ export function LayoutRenderer({ layout, registryUrl }: LayoutRendererProps) {
           region={region}
           registryUrl={registryUrl}
           override={slotOverrides[region.slot]}
+          assigned={assigned}
         />
       ))}
     </div>
@@ -113,11 +117,17 @@ function RegionSlot({
   region,
   registryUrl,
   override,
+  assigned,
 }: {
   region: LayoutRegion;
   registryUrl: string;
   override?: SlotOverride;
+  assigned: Set<string>;
 }) {
+  const hasContent = override || assigned.size === 0 || assigned.has(region.slot);
+
+  if (!hasContent) return null;
+
   return (
     <div data-lyx-region={region.id} data-lyx-slot={region.slot}>
       <MFESlot
