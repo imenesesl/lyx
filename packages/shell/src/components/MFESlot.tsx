@@ -1,4 +1,5 @@
 import React, { Suspense, useEffect, useState, useRef, type ComponentType } from "react";
+import * as ReactDOM from "react-dom";
 import type { MFERegistryEntry } from "@lyx/types";
 import { startLoadTimer, reportRenderError } from "@lyx/sdk";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -195,7 +196,24 @@ async function loadMFEComponent(
 
   if (!runtimeInitialized) {
     try {
-      mf.init({ name: "lyx_shell", remotes: [] });
+      mf.init({
+        name: "lyx_shell",
+        remotes: [],
+        shared: {
+          react: {
+            version: React.version,
+            scope: "default",
+            lib: () => React,
+            shareConfig: { singleton: true, requiredVersion: `^${React.version}` },
+          },
+          "react-dom": {
+            version: (ReactDOM as any).version ?? React.version,
+            scope: "default",
+            lib: () => ReactDOM,
+            shareConfig: { singleton: true, requiredVersion: `^${React.version}` },
+          },
+        },
+      });
     } catch { /* already initialized */ }
     runtimeInitialized = true;
   }

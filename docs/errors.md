@@ -185,6 +185,64 @@ pnpm nx run-many -t build --projects='@lyx/types,@lyx/sdk,...,@lyx/admin-ui'
 
 ---
 
+### Shell Stuck in Infinite Loading — `$m is not defined`
+
+**Category**: Build / Runtime
+**Symptom**: After deploying the Shell/SSR, MFEs never load. The page shows skeleton placeholders forever. Browser console shows `Uncaught ReferenceError: $m is not defined` in the main bundle.
+**Cause**: `@module-federation/vite` configures `react` and `react-dom` as `shared` modules in the host (Shell). During the Vite/Rollup production build, `react-dom`'s CommonJS code (`react-dom.production.js`) gets inlined into the main bundle. This code contains `require('react')`, which Module Federation intercepts and transforms into an async shared-module reference. After minification, the reference becomes `$m` (or similar), but the variable is never defined in the module scope because the async resolution fails at bundle time. This crashes the entire client-side JavaScript bundle, preventing React from initializing.
+**Fix**: Remove `react` and `react-dom` from the host's Module Federation `shared` build config in `packages/vite-plugin/src/host-plugin.ts`:
+```typescript
+shared: {},
+```
+Instead, register React as a shared module at **runtime** in `MFESlot.tsx` when calling `mf.init()`:
+```typescript
+mf.init({
+  name: "lyx_shell",
+  remotes: [],
+  shared: {
+    react: {
+      version: React.version,
+      scope: "default",
+      lib: () => React,
+      shareConfig: { singleton: true, requiredVersion: `^${React.version}` },
+    },
+    "react-dom": {
+      version: (ReactDOM as any).version ?? React.version,
+      scope: "default",
+      lib: () => ReactDOM,
+      shareConfig: { singleton: true, requiredVersion: `^${React.version}` },
+    },
+  },
+});
+```
+This approach lets Vite bundle React normally (no CJS interception issues) while still exposing it to MFEs through the Module Federation runtime.
+**Prevention**: Never configure `react` or `react-dom` in the host's build-time `shared` config when using `@module-federation/vite`. Always use runtime registration via `init()` with `lib` callbacks instead. The remote (MFE) plugins can still declare `shared` because they use a different code path.
+
+---
+
+### Multiple React Instances — `Cannot read properties of null (reading 'useState')`
+
+**Category**: Build / Runtime
+**Symptom**: MFEs crash with `TypeError: Cannot read properties of null (reading 'useState')` and React error #418 (hydration mismatch). The browser console also shows `[lyx] MFE crashed: TypeError: Cannot read properties of null (reading 'useState')`.
+**Cause**: If `shared: {}` is set in the host WITHOUT runtime shared registration, MFEs bundle their own copy of React. When an MFE component calls `useState`, it uses its own React instance, which has no active fiber tree (the host's `hydrateRoot`/`createRoot` was called with the host's React). React hooks require the calling React instance to be the same one that rendered the component tree.
+**Fix**: This error is the consequence of removing `shared` from the build config without replacing it with runtime registration. The complete fix requires BOTH steps:
+1. Remove `shared` from host build config (fixes `$m`)
+2. Add runtime `shared` registration in `MFESlot.tsx` `init()` call (fixes multiple instances)
+See the fix above for `$m is not defined` — it includes both steps.
+**Prevention**: These two errors are linked. Never apply one fix without the other. If `shared` is removed from the build config, runtime registration MUST be added. Test locally with the SSR server + real MFEs before pushing.
+
+---
+
+### SSR Hydration Mismatch — React Error #418
+
+**Category**: Runtime
+**Symptom**: Console shows `[lyx] Hydration recovery: Error: Minified React error #418`. The page briefly flashes before client rendering takes over.
+**Cause**: The SSR-rendered HTML doesn't exactly match the client's initial render. Common causes in Lyx: (1) `<style>` tags from `SlotSkeleton` rendered differently, (2) devtools/observability components are client-only, (3) timing differences in layout rendering.
+**Fix**: `entry-client.tsx` uses `hydrateRoot` with an `onRecoverableError` callback that logs the error as a warning. If hydration throws, it falls back to `createRoot` (full client render). This is non-fatal — the app recovers automatically.
+**Prevention**: This is a known trade-off of SSR with dynamic MFE loading. The skeletons are intentionally server-rendered for perceived performance. The hydration mismatch is expected and handled gracefully. Do not treat this warning as a bug unless it causes visible UI issues.
+
+---
+
 ## Adding New Errors
 
 When documenting a new error, use this template:
