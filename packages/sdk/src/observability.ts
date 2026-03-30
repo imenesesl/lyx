@@ -25,7 +25,7 @@ interface ObservabilityConfig {
 
 const DEFAULT_CONFIG: ObservabilityConfig = {
   endpoint: "/api/metrics",
-  flushIntervalMs: 30_000,
+  flushIntervalMs: 10_000,
   maxBufferSize: 50,
   enabled: true,
 };
@@ -33,6 +33,8 @@ const DEFAULT_CONFIG: ObservabilityConfig = {
 let config: ObservabilityConfig = { ...DEFAULT_CONFIG };
 let buffer: MFEMetricEvent[] = [];
 let flushTimer: ReturnType<typeof setInterval> | null = null;
+let firstFlushDone = false;
+let listenersAttached = false;
 
 export function configureObservability(
   partial: Partial<ObservabilityConfig>
@@ -44,59 +46,79 @@ export function configureObservability(
   }
 }
 
-function startFlushing(): void {
-  if (flushTimer) return;
-  flushTimer = setInterval(flush, config.flushIntervalMs);
+function attachPageLifecycleListeners(): void {
+  if (listenersAttached || isServer) return;
+  listenersAttached = true;
 
-  if (typeof document !== "undefined") {
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") flush();
-    });
-  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushSync();
+  });
+
+  window.addEventListener("beforeunload", () => {
+    flushSync();
+  });
+
+  window.addEventListener("pagehide", () => {
+    flushSync();
+  });
 }
 
-async function flush(): Promise<void> {
+function startFlushing(): void {
+  if (flushTimer) return;
+  flushTimer = setInterval(flushSync, config.flushIntervalMs);
+  attachPageLifecycleListeners();
+}
+
+function flushSync(): void {
   if (buffer.length === 0) return;
 
   const batch = buffer.splice(0);
+  const payload = JSON.stringify({ metrics: batch });
 
   try {
     if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-      const blob = new Blob(
-        [JSON.stringify({ metrics: batch })],
-        { type: "application/json" }
-      );
+      const blob = new Blob([payload], { type: "application/json" });
       const ok = navigator.sendBeacon(config.endpoint, blob);
       if (!ok) {
-        await fetchFlush(batch);
+        sendViaFetch(payload);
       }
     } else {
-      await fetchFlush(batch);
+      sendViaFetch(payload);
     }
   } catch {
     buffer.unshift(...batch.slice(-config.maxBufferSize));
   }
 }
 
-async function fetchFlush(batch: MFEMetricEvent[]): Promise<void> {
-  await fetch(config.endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ metrics: batch }),
-    keepalive: true,
-  });
+function sendViaFetch(payload: string): void {
+  try {
+    fetch(config.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: payload,
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // best-effort
+  }
 }
 
 /**
- * Report a metric event. Buffers and sends in batches.
+ * Report a metric event. Flushes immediately on the first event,
+ * then batches subsequent events.
  */
 export function reportMetric(event: MFEMetricEvent): void {
   if (isServer || !config.enabled) return;
 
   buffer.push(event);
 
+  if (!firstFlushDone) {
+    firstFlushDone = true;
+    setTimeout(flushSync, 2000);
+  }
+
   if (buffer.length >= config.maxBufferSize) {
-    flush();
+    flushSync();
   }
 
   if (!flushTimer) {
