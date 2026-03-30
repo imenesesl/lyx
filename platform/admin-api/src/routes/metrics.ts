@@ -167,4 +167,56 @@ router.get("/health/:mfeName", authRequired, async (req, res) => {
   }
 });
 
+router.get("/logs", authRequired, async (req, res) => {
+  try {
+    const windowMs = parseInt(req.query.window as string) || 86400000;
+    const since = new Date(Date.now() - windowMs);
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const skip = (page - 1) * limit;
+    const typeFilter = req.query.type as string | undefined;
+    const mfeFilter = req.query.mfe as string | undefined;
+    const search = req.query.search as string | undefined;
+
+    const query: Record<string, unknown> = { timestamp: { $gte: since } };
+
+    if (typeFilter && typeFilter !== "all") {
+      query.type = typeFilter;
+    }
+    if (mfeFilter && mfeFilter !== "all") {
+      query.mfeName = mfeFilter;
+    }
+    if (search) {
+      query.errorMessage = { $regex: search, $options: "i" };
+    }
+
+    const [logs, total, mfeNames] = await Promise.all([
+      MFEMetric.find(query)
+        .sort({ timestamp: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      MFEMetric.countDocuments(query),
+      MFEMetric.distinct("mfeName", { timestamp: { $gte: since } }),
+    ]);
+
+    res.json({
+      logs: logs.map((l) => ({
+        id: l._id,
+        mfeName: l.mfeName,
+        mfeVersion: l.mfeVersion,
+        slot: l.slot,
+        type: l.type,
+        loadTimeMs: l.loadTimeMs,
+        errorMessage: l.errorMessage,
+        timestamp: l.timestamp,
+      })),
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      filters: { mfeNames },
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch logs" });
+  }
+});
+
 export default router;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "../api/client";
 import { useRefresh } from "../components/AppShell";
 import { CardSkeleton } from "../components/Skeleton";
@@ -37,6 +37,30 @@ interface DetailResponse {
   buckets: BucketData[];
 }
 
+interface LogEntry {
+  id: string;
+  mfeName: string;
+  mfeVersion: string;
+  slot: string;
+  type: "load_success" | "load_error" | "render_error" | "event_timeout";
+  loadTimeMs?: number;
+  errorMessage?: string;
+  timestamp: string;
+}
+
+interface LogsResponse {
+  logs: LogEntry[];
+  pagination: { page: number; limit: number; total: number; pages: number };
+  filters: { mfeNames: string[] };
+}
+
+const TYPE_STYLES: Record<string, { bg: string; color: string; label: string }> = {
+  load_success: { bg: "var(--success-muted)", color: "var(--success)", label: "LOAD OK" },
+  load_error: { bg: "var(--danger-muted)", color: "var(--danger)", label: "LOAD ERR" },
+  render_error: { bg: "var(--danger-muted)", color: "var(--danger)", label: "RENDER ERR" },
+  event_timeout: { bg: "var(--warning-muted)", color: "var(--warning)", label: "TIMEOUT" },
+};
+
 const WINDOWS = [
   { label: "1h", value: 3600000 },
   { label: "6h", value: 21600000 },
@@ -64,6 +88,7 @@ const STATUS_LABELS = {
 
 export function Health() {
   const { refreshKey } = useRefresh();
+  const [tab, setTab] = useState<"health" | "logs">("health");
   const [data, setData] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [windowMs, setWindowMs] = useState(3600000);
@@ -98,7 +123,7 @@ export function Health() {
       <div className="page-header">
         <div>
           <h1>MFE Health</h1>
-          <p className="page-subtitle">Per-MFE observability and error budgets</p>
+          <p className="page-subtitle">Per-MFE observability, error budgets, and logs</p>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           {WINDOWS.map((w) => (
@@ -113,16 +138,23 @@ export function Health() {
         </div>
       </div>
 
-      {loading ? (
+      <div className="tabs" style={{ marginBottom: 20 }}>
+        <button className={`tab ${tab === "health" ? "tab-active" : ""}`} onClick={() => setTab("health")}>Dashboard</button>
+        <button className={`tab ${tab === "logs" ? "tab-active" : ""}`} onClick={() => setTab("logs")}>Logs</button>
+      </div>
+
+      {tab === "logs" && <LogsPanel windowMs={windowMs} refreshKey={refreshKey} />}
+
+      {tab === "health" && loading ? (
         <CardSkeleton count={4} />
-      ) : !data || data.mfes.length === 0 ? (
+      ) : tab === "health" && (!data || data.mfes.length === 0) ? (
         <div className="card empty-state" style={{ textAlign: "center", padding: 48 }}>
           <h3>No metrics yet</h3>
           <p style={{ color: "var(--text-muted)", marginTop: 8 }}>
             MFE health data will appear once users interact with your applications.
           </p>
         </div>
-      ) : (
+      ) : tab === "health" && data ? (
         <>
           <div className="grid grid-4" style={{ marginBottom: 28 }}>
             <div className="stat-card">
@@ -276,7 +308,7 @@ export function Health() {
             )}
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -347,3 +379,224 @@ function MiniChart({
     </svg>
   );
 }
+
+function LogsPanel({ windowMs, refreshKey }: { windowMs: number; refreshKey: number }) {
+  const [logs, setLogs] = useState<LogsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [mfeFilter, setMfeFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [autoRefresh, setAutoRefresh] = useState(false);
+
+  const fetchLogs = useCallback(() => {
+    setLoading(true);
+    const params = new URLSearchParams({
+      window: String(windowMs),
+      page: String(page),
+      limit: "50",
+    });
+    if (typeFilter !== "all") params.set("type", typeFilter);
+    if (mfeFilter !== "all") params.set("mfe", mfeFilter);
+    if (search) params.set("search", search);
+
+    api
+      .get<LogsResponse>(`/metrics/logs?${params}`)
+      .then(setLogs)
+      .catch(() => setLogs(null))
+      .finally(() => setLoading(false));
+  }, [windowMs, page, typeFilter, mfeFilter, search]);
+
+  useEffect(() => { fetchLogs(); }, [fetchLogs, refreshKey]);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(fetchLogs, 5000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, fetchLogs]);
+
+  useEffect(() => { setPage(1); }, [typeFilter, mfeFilter, search, windowMs]);
+
+  const handleSearch = () => { setSearch(searchInput); };
+
+  return (
+    <div>
+      {/* Toolbar */}
+      <div className="card" style={{ padding: 12, marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <select className="select" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ minWidth: 130 }}>
+          <option value="all">All types</option>
+          <option value="load_success">Load Success</option>
+          <option value="load_error">Load Error</option>
+          <option value="render_error">Render Error</option>
+          <option value="event_timeout">Event Timeout</option>
+        </select>
+
+        <select className="select" value={mfeFilter} onChange={(e) => setMfeFilter(e.target.value)} style={{ minWidth: 130 }}>
+          <option value="all">All MFEs</option>
+          {(logs?.filters.mfeNames ?? []).map((name) => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+        </select>
+
+        <div style={{ display: "flex", gap: 4, flex: 1, minWidth: 200 }}>
+          <input
+            className="input"
+            placeholder="Search error messages..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            style={{ flex: 1, fontSize: 12 }}
+          />
+          <button className="btn btn-secondary btn-sm" onClick={handleSearch}>Search</button>
+        </div>
+
+        <button
+          className={`btn btn-sm ${autoRefresh ? "btn-primary" : "btn-ghost"}`}
+          onClick={() => setAutoRefresh(!autoRefresh)}
+          title={autoRefresh ? "Auto-refresh ON (5s)" : "Auto-refresh OFF"}
+        >
+          {autoRefresh ? "⏸ Live" : "▶ Live"}
+        </button>
+
+        {logs && (
+          <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>
+            {logs.pagination.total} events
+          </span>
+        )}
+      </div>
+
+      {/* Logs table */}
+      {loading && !logs ? (
+        <CardSkeleton count={3} />
+      ) : !logs || logs.logs.length === 0 ? (
+        <div className="card empty-state" style={{ textAlign: "center", padding: 48 }}>
+          <h3>No logs found</h3>
+          <p style={{ color: "var(--text-muted)", marginTop: 8 }}>
+            {search || typeFilter !== "all" || mfeFilter !== "all"
+              ? "Try adjusting your filters."
+              : "Logs will appear once MFEs are loaded by users."}
+          </p>
+        </div>
+      ) : (
+        <>
+          <div style={{ borderRadius: "var(--radius)", border: "1px solid var(--border)", overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border)" }}>
+                  <th style={thStyle}>Timestamp</th>
+                  <th style={thStyle}>Type</th>
+                  <th style={thStyle}>MFE</th>
+                  <th style={thStyle}>Version</th>
+                  <th style={thStyle}>Slot</th>
+                  <th style={thStyle}>Load Time</th>
+                  <th style={{ ...thStyle, width: "40%" }}>Message</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.logs.map((log) => {
+                  const style = TYPE_STYLES[log.type] ?? TYPE_STYLES.load_success;
+                  const isError = log.type === "load_error" || log.type === "render_error";
+                  return (
+                    <tr
+                      key={log.id}
+                      style={{
+                        borderBottom: "1px solid var(--border)",
+                        background: isError ? "rgba(239, 68, 68, 0.04)" : undefined,
+                      }}
+                    >
+                      <td style={tdStyle}>
+                        <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--text-muted)" }}>
+                          {new Date(log.timestamp).toLocaleString()}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{
+                          display: "inline-block", padding: "2px 8px", borderRadius: 4, fontSize: 10,
+                          fontWeight: 600, background: style.bg, color: style.color, fontFamily: "monospace",
+                        }}>
+                          {style.label}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{ fontWeight: 600 }}>{log.mfeName}</span>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{ fontFamily: "monospace", color: "var(--text-muted)" }}>v{log.mfeVersion}</span>
+                      </td>
+                      <td style={tdStyle}>
+                        <span className="badge badge-accent" style={{ fontSize: 10 }}>{log.slot}</span>
+                      </td>
+                      <td style={tdStyle}>
+                        {log.loadTimeMs != null ? (
+                          <span style={{
+                            fontFamily: "monospace", fontSize: 11,
+                            color: log.loadTimeMs > 3000 ? "var(--danger)" : log.loadTimeMs > 1000 ? "var(--warning)" : "var(--text-secondary)",
+                          }}>
+                            {log.loadTimeMs}ms
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)" }}>—</span>
+                        )}
+                      </td>
+                      <td style={tdStyle}>
+                        {log.errorMessage ? (
+                          <span style={{
+                            fontFamily: "monospace", fontSize: 11, color: "var(--danger)",
+                            wordBreak: "break-word", lineHeight: 1.4,
+                          }}>
+                            {log.errorMessage.length > 200 ? log.errorMessage.slice(0, 200) + "..." : log.errorMessage}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {logs.pagination.pages > 1 && (
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 16 }}>
+              <button
+                className="btn btn-ghost btn-sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                ← Prev
+              </button>
+              <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "monospace" }}>
+                Page {logs.pagination.page} of {logs.pagination.pages}
+              </span>
+              <button
+                className="btn btn-ghost btn-sm"
+                disabled={page >= logs.pagination.pages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+const thStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  textAlign: "left",
+  fontSize: 11,
+  fontWeight: 600,
+  color: "var(--text-muted)",
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  verticalAlign: "top",
+};
