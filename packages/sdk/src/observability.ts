@@ -62,10 +62,11 @@ async function flush(): Promise<void> {
 
   try {
     if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-      const ok = navigator.sendBeacon(
-        config.endpoint,
-        JSON.stringify({ metrics: batch })
+      const blob = new Blob(
+        [JSON.stringify({ metrics: batch })],
+        { type: "application/json" }
       );
+      const ok = navigator.sendBeacon(config.endpoint, blob);
       if (!ok) {
         await fetchFlush(batch);
       }
