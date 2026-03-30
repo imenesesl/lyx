@@ -1,13 +1,34 @@
 import express from "express";
 import { readFileSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT ?? "4002", 10);
 const API_URL = process.env.API_URL ?? "http://admin-api:4000";
 const S3_BUCKET = process.env.S3_BUCKET ?? "";
 const AWS_REGION = process.env.AWS_REGION ?? "us-west-2";
+
+const MIME_MAP = {
+  ".js": "application/javascript",
+  ".mjs": "application/javascript",
+  ".css": "text/css",
+  ".json": "application/json",
+  ".html": "text/html",
+  ".map": "application/json",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".svg": "image/svg+xml",
+};
+
+let s3Client;
+function getS3() {
+  if (!s3Client) s3Client = new S3Client({ region: AWS_REGION });
+  return s3Client;
+}
 
 const CLIENT_DIR = join(__dirname, "client");
 const SSR_DIR = join(__dirname, "ssr");
@@ -64,22 +85,29 @@ async function startServer() {
     const objectKey = req.path.startsWith("/") ? req.path.slice(1) : req.path;
 
     if (S3_BUCKET) {
-      const s3Url = `https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${objectKey}`;
       try {
-        const s3Res = await fetch(s3Url);
-        if (!s3Res.ok) {
-          res.status(s3Res.status).end();
-          return;
-        }
-        const ct = s3Res.headers.get("content-type") || "application/octet-stream";
+        const s3 = getS3();
+        const cmd = new GetObjectCommand({ Bucket: S3_BUCKET, Key: objectKey });
+        const s3Res = await s3.send(cmd);
+
+        const ext = extname(objectKey);
+        const ct = MIME_MAP[ext] || s3Res.ContentType || "application/octet-stream";
         res.setHeader("Content-Type", ct);
         res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
         res.setHeader("Access-Control-Allow-Origin", "*");
-        const body = await s3Res.arrayBuffer();
-        res.end(Buffer.from(body));
+        s3Res.Body.transformToWebStream().pipeTo(
+          new WritableStream({
+            write(chunk) { res.write(chunk); },
+            close() { res.end(); },
+          })
+        ).catch(() => res.end());
       } catch (err) {
-        console.error("[lyx-ssr] Storage proxy error:", err.message);
-        res.status(502).end();
+        if (err.name === "NoSuchKey" || err.$metadata?.httpStatusCode === 404) {
+          res.status(404).end();
+        } else {
+          console.error("[lyx-ssr] S3 fetch error:", err.message);
+          res.status(502).end();
+        }
       }
     } else {
       try {
