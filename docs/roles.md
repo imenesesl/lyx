@@ -103,21 +103,42 @@ Every change to the Lyx framework should be evaluated from six perspectives. Thi
 - [ ] Responsive design considered
 - [ ] Component is self-contained (no cross-MFE imports)
 
-### QA
-**Focus**: Testing, regression prevention, error documentation
+### QA Regression Tester
+**Focus**: Full regression testing, zero-bug delivery, pattern-based prevention
+**Skill**: `.cursor/skills/lyx-qa-regression/SKILL.md`
 **Questions to ask**:
-- Is this error documented in `docs/errors.md`?
-- Could this break existing MFEs?
-- Are edge cases handled (first deploy, empty state, missing data)?
-- Is the fix tested in both local and production environments?
-- Does the CI catch this type of error?
+- Do ALL packages build in dependency order without errors?
+- Do ALL Dockerfiles include every workspace dependency?
+- Does the new code send correct `Content-Type` headers?
+- Is every new file exported, imported, mounted, and routed?
+- Does the data flow work end-to-end (browser → proxy → API → DB → response)?
+- Are build artifacts properly gitignored?
+- Has this bug pattern happened before? (check Known Bug Patterns)
+
+**Activation**: MANDATORY after every feature implementation or bug fix, BEFORE committing.
 
 **Review checklist**:
-- [ ] Error documented with cause, fix, and prevention
-- [ ] Regression test added if applicable
-- [ ] CI pipeline validates the fix
-- [ ] Local development flow verified
-- [ ] Production deployment flow verified
+- [ ] All packages build successfully in dependency order
+- [ ] All packages lint with zero errors
+- [ ] Platform services type check cleanly
+- [ ] ALL Dockerfiles verified (deps, build order, COPY steps)
+- [ ] New files are exported and cross-referenced correctly
+- [ ] API contracts verified (Content-Type, auth, proxy)
+- [ ] Runtime data flow traced end-to-end
+- [ ] No build artifacts in git status
+- [ ] Documentation complete (features, backlog, errors, README)
+- [ ] Edge cases covered (empty state, auth boundary, first deploy)
+- [ ] Error documented in `docs/errors.md` with cause, fix, prevention
+- [ ] If new bug pattern found, added to QA skill's Known Bug Patterns
+
+**Known Bug Patterns to always check**:
+1. New `workspace:*` dependency not in Dockerfile
+2. `sendBeacon` sending `text/plain` instead of `application/json`
+3. `pnpm-lock.yaml` out of sync after renames/adds
+4. Missing `ssr.noExternal` in vite configs for new `@lyx/*` imports
+5. Build order violation (types must build before sdk, sdk before shell)
+6. New routes not mounted in Express `app.use()`
+7. New pages not added to React Router or AppShell navigation
 
 ---
 
@@ -166,9 +187,13 @@ What approach did we choose?
 4. **Architect reviews** → Feasibility, system impact, risks
 5. **Staff reviews** → Approach, effort, technical risks
 6. **PM approves** → Add to `docs/workplan.md` sprint
-7. **Engineer implements** → Code, tests, PR
-8. **QA validates** → Acceptance criteria, regression, edge cases
-9. **Docs updated** → features.md, errors.md, README, rules, skills
-10. **PO signs off** → Feature marked done, backlog updated
+7. **Engineer implements** → Code changes
+8. **QA Regression runs** → MANDATORY full regression (`.cursor/skills/lyx-qa-regression/SKILL.md`)
+9. **Fix any failures** → If QA finds issues, fix and re-run affected checks
+10. **Docs updated** → features.md, errors.md, README, rules, skills
+11. **Commit and push** → Only after QA regression passes
+12. **PO signs off** → Feature marked done, backlog updated
 
-This cycle ensures strategic alignment and zero-bug convergence over time.
+**CRITICAL**: Steps 8-9 are NOT optional. The QA Regression must pass before ANY commit. This is the primary defense against bugs reaching the user.
+
+This cycle ensures strategic alignment and zero-bug delivery.

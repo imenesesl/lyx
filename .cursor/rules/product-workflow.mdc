@@ -14,18 +14,37 @@ Every new feature or significant change must follow this pipeline:
 3. **Architect reviews** → Feasibility, system impact, breaking changes, risks
 4. **Staff/Principal reviews** → Approach, effort estimate, technical risks
 5. **PM approves** → Add to `docs/workplan.md` with full analysis
-6. **Engineer implements** → Code, tests, PR
-7. **QA validates** → Acceptance criteria, regressions, edge cases
+6. **Engineer implements** → Code changes
+7. **QA Regression runs** → MANDATORY full regression before commit (see below)
 8. **Documentation updated** → features.md, errors.md, README, rules, skills
 9. **PO signs off** → Backlog item marked done
 
+## MANDATORY: QA Regression Before Commit
+
+**CRITICAL RULE**: After implementing any feature or fix, you MUST run the QA Regression skill (`.cursor/skills/lyx-qa-regression/SKILL.md`) BEFORE committing. This is NOT optional.
+
+The regression includes:
+- Build all packages in dependency order (types → sdk → vite-plugin → cli → registry → shell)
+- Lint all packages
+- Type check platform services (admin-api, admin-ui)
+- Verify ALL Dockerfiles have correct dependencies and build order
+- Cross-reference new files (exports, routes, navigation, imports)
+- Verify API contracts (Content-Type, auth, proxy forwarding)
+- Trace runtime data flow end-to-end
+- Check .gitignore for build artifacts
+- Verify documentation completeness
+
+If ANY check fails, fix it before committing. Re-run affected checks after fixing.
+
 ## Rules
 
+- **Never skip QA regression** — even for "small" fixes. The sendBeacon bug and Dockerfile bug were both "small" and both broke production
 - **Never skip analysis for P0/P1 items** — both Architect and Staff must review
-- **P2/P3 items** may have lighter analysis but still need backlog entries
+- **P2/P3 items** may have lighter analysis but still need backlog entries and QA regression
 - **Every completed item** must have documentation updated before marking done
 - **Backlog is the source of truth** — `docs/backlog.md` is always current
 - **Competitive analysis drives priority** — check `docs/competitive-analysis.md` before proposing features
+- **Learn from bugs** — every bug found by the user must be added to the QA skill's "Known Bug Patterns" section
 
 ## Role Files
 
@@ -33,10 +52,10 @@ Every new feature or significant change must follow this pipeline:
 |------|-------|------|
 | Product Owner | `.cursor/skills/lyx-product-owner/SKILL.md` | `docs/backlog.md`, `docs/competitive-analysis.md` |
 | Project Manager | `.cursor/skills/lyx-project-manager/SKILL.md` | `docs/workplan.md` |
+| QA Regression | `.cursor/skills/lyx-qa-regression/SKILL.md` | `docs/errors.md` |
 | Architect | (inline in `docs/roles.md`) | `docs/architecture.md` |
 | Staff Engineer | (inline in `docs/roles.md`) | `.cursor/rules/` |
 | Developer | (inline in `docs/roles.md`) | `docs/features.md` |
-| QA | (inline in `docs/roles.md`) | `docs/errors.md` |
 
 ## Priority Quick Reference
 
@@ -52,4 +71,6 @@ Every new feature or significant change must follow this pipeline:
 - If the user requests a new feature, first check if it exists in `docs/backlog.md`
 - If not, create a backlog entry with competitive justification before implementing
 - For P0/P1 items, always document the Architect and Staff analysis in `docs/workplan.md`
-- After implementing any feature, update the backlog status and documentation
+- **After implementing, ALWAYS run QA regression before committing**
+- After QA passes, update backlog status and documentation
+- If a bug is found post-commit, add it to the QA skill's "Known Bug Patterns" so it never happens again
