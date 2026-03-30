@@ -14,10 +14,9 @@ Before debugging, always verify:
 
 1. **AWS credentials** (if AWS-related):
    ```bash
-   source ~/.lyx-aws 2>/dev/null
-   aws sts get-caller-identity
+   lyx aws status
    ```
-   If expired → `bash scripts/aws-login.sh`
+   If expired → `lyx aws login`
 
 2. **CLI is linked**:
    ```bash
@@ -60,7 +59,7 @@ Read [docs/errors.md](../../docs/errors.md) for previously resolved issues with 
 - **ECR repo not found**: Run `bash scripts/ensure-infra.sh` first
 - **IAM permission denied**: Apply `scripts/iam-policy.json` to the CI user
 - **Invalid JSON in env vars**: Use `jq -nc` to build JSON, never string interpolation
-- **ExpiredToken**: Run `bash scripts/aws-login.sh` — credentials saved to `~/.lyx-aws`
+- **ExpiredToken**: Run `lyx aws login` — credentials saved to `~/.lyx-aws`
 
 ### Runtime Errors
 

@@ -13,11 +13,10 @@ description: >-
 **ALWAYS verify before any AWS command**:
 
 ```bash
-source ~/.lyx-aws 2>/dev/null
-aws sts get-caller-identity
+lyx aws status
 ```
 
-If expired → `bash scripts/aws-login.sh`
+If expired → `lyx aws login`
 
 ### Credential flow
 
@@ -91,7 +90,7 @@ Start: `bash scripts/platform.sh up`
 
 ## Critical Rules
 
-1. **Credentials first**: Always verify `~/.lyx-aws` before AWS commands. If expired, run `bash scripts/aws-login.sh`.
+1. **Credentials first**: Always run `lyx aws status` before AWS commands. If expired, run `lyx aws login`.
 2. **JSON construction**: Always use `jq -nc --arg` for secrets in env vars — never string interpolation
 3. **Concurrency**: One workflow per branch at a time
 4. **IAM policy**: `scripts/iam-policy.json` covers ECR, App Runner, IAM roles, S3, STS

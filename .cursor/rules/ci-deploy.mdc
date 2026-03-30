@@ -11,11 +11,10 @@ alwaysApply: false
 **ALWAYS check credentials before any AWS operation**:
 
 ```bash
-source ~/.lyx-aws 2>/dev/null
-aws sts get-caller-identity
+lyx aws status
 ```
 
-- If expired: guide user to run `bash scripts/aws-login.sh`
+- If expired: guide user to run `lyx aws login`
 - Credentials file: `~/.lyx-aws` (auto-loaded by all Lyx scripts)
 - Never hardcode credentials in code or commits
 - `~/.lyx-aws` is in `.gitignore`

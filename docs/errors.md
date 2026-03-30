@@ -123,8 +123,8 @@ pnpm nx run-many -t build --projects='@lyx/types,@lyx/sdk,...,@lyx/admin-ui'
 **Category**: Infra / Local
 **Symptom**: `An error occurred (ExpiredToken) when calling the GetCallerIdentity operation: The security token included in the request is expired`
 **Cause**: Local AWS SSO session token has expired. SSO tokens last 1–12 hours depending on configuration.
-**Fix**: Run `bash scripts/aws-login.sh` to enter new credentials. They are saved to `~/.lyx-aws` and auto-loaded by all Lyx scripts.
-**Prevention**: For local development, prefer IAM user access keys (permanent) over SSO session tokens (temporary). All Lyx scripts auto-load `~/.lyx-aws` — the agent should always check credential validity before running AWS commands (`source ~/.lyx-aws && aws sts get-caller-identity`).
+**Fix**: Run `lyx aws login` to enter new credentials. They are saved to `~/.lyx-aws` and auto-loaded by all Lyx scripts. Check with `lyx aws status`.
+**Prevention**: For local development, prefer IAM user access keys (permanent) over SSO session tokens (temporary). All Lyx scripts auto-load `~/.lyx-aws` — always check credential validity with `lyx aws status` before running AWS commands.
 
 ### MFE Bundles Not Loading from S3 (Failed to fetch dynamically imported module)
 **Category**: Infra / Runtime

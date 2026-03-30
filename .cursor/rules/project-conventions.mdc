@@ -28,11 +28,10 @@ lyx login -s <url>           # authenticate to a server
 Before any AWS command, always check credentials:
 
 ```bash
-source ~/.lyx-aws 2>/dev/null
-aws sts get-caller-identity
+lyx aws status
 ```
 
-If expired or missing, guide the user to: `bash scripts/aws-login.sh`
+If expired or missing, guide the user to: `lyx aws login`
 
 - Credentials stored in `~/.lyx-aws` (auto-loaded by all Lyx scripts)
 - Never hardcode credentials — `~/.lyx-aws` is in `.gitignore`

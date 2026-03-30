@@ -51,7 +51,7 @@ refactor: code restructuring
 
 ## Agent Pre-checks (ALWAYS do before acting)
 
-1. **AWS commands** → `source ~/.lyx-aws && aws sts get-caller-identity` — if expired, run `bash scripts/aws-login.sh`
+1. **AWS commands** → `lyx aws status` — if expired, run `lyx aws login`
 2. **CLI commands** → `which lyx` — if not found, rebuild and link
 3. **Directory renames** → `pnpm install --no-frozen-lockfile` + commit lockfile
 4. **After fixing anything** → update `docs/errors.md` with the resolution

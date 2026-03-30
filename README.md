@@ -229,10 +229,8 @@ Then in Admin UI: select the new version → **Publish**.
 
 ### Configure AWS credentials locally
 
-Run the credential setup script once. It saves credentials to `~/.lyx-aws` and auto-loads them for all subsequent commands:
-
 ```bash
-bash scripts/aws-login.sh
+lyx aws login
 ```
 
 It will prompt for:
@@ -240,13 +238,12 @@ It will prompt for:
 - `AWS_SECRET_ACCESS_KEY` — the secret key
 - `AWS_SESSION_TOKEN` — only needed for SSO/temporary credentials (leave empty for IAM user keys)
 
-Credentials are stored in `~/.lyx-aws` (chmod 600). **All Lyx scripts auto-load this file**, so you only need to run `aws-login.sh` when credentials expire.
+Credentials are stored in `~/.lyx-aws` (chmod 600). **All Lyx scripts auto-load this file**.
 
-To verify credentials are valid:
+To check if credentials are still valid:
 
 ```bash
-source ~/.lyx-aws
-aws sts get-caller-identity
+lyx aws status
 ```
 
 > **Note**: SSO session tokens expire after 1–12 hours. IAM user access keys don't expire. For local development, prefer IAM user keys. For CI/CD, use IAM user keys in GitHub Secrets.
@@ -254,7 +251,7 @@ aws sts get-caller-identity
 ### First deploy
 
 ```bash
-bash scripts/aws-login.sh           # set up credentials (once)
+lyx aws login                       # set up credentials (once)
 export MONGO_URI="mongodb+srv://user:pass@cluster.mongodb.net/lyx"
 bash scripts/deploy-aws.sh deploy
 ```
@@ -269,7 +266,7 @@ bash scripts/deploy-aws.sh status    # show service URLs and status
 bash scripts/destroy-aws.sh          # tear down everything
 ```
 
-> All deploy scripts auto-load `~/.lyx-aws`. If credentials expired, run `bash scripts/aws-login.sh` again.
+> All deploy scripts auto-load `~/.lyx-aws`. If credentials expired, run `lyx aws login` again.
 
 ### AWS Architecture
 
@@ -361,6 +358,9 @@ Go to GitHub → **Actions** → **CI** → **Run workflow** → triggers a full
 | `lyx login` | Log in to local platform |
 | `lyx login -s <url>` | Log in to a remote server |
 | `lyx view` | Open the app in the browser |
+| `lyx aws login` | Set up AWS credentials locally |
+| `lyx aws status` | Check if AWS credentials are valid |
+| `lyx aws logout` | Remove saved AWS credentials |
 | `lyx --help` | Show all available commands |
 
 ## Platform Commands
@@ -500,7 +500,7 @@ cd apps/my-project && lyx deploy
 # http://localhost/{accountId}/{slug}/
 
 # PRODUCTION
-bash scripts/aws-login.sh               # configure AWS credentials (once)
+lyx aws login                            # configure AWS credentials (once)
 lyx login -s https://API.awsapprunner.com
 cd apps/my-project && lyx deploy
 # Admin UI: select version → publish

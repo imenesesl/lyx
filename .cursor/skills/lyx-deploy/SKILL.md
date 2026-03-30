@@ -15,14 +15,13 @@ description: >-
 ### Check credentials
 
 ```bash
-source ~/.lyx-aws 2>/dev/null
-aws sts get-caller-identity
+lyx aws status
 ```
 
 ### Set up credentials (first time or expired)
 
 ```bash
-bash scripts/aws-login.sh
+lyx aws login
 ```
 
 This saves credentials to `~/.lyx-aws` (chmod 600). All Lyx scripts (`deploy-aws.sh`, `ensure-infra.sh`, etc.) auto-load this file.
@@ -34,7 +33,7 @@ This saves credentials to `~/.lyx-aws` (chmod 600). All Lyx scripts (`deploy-aws
 | IAM user access keys (`AKIA...`) | Never | Local dev, CI/CD |
 | SSO session tokens (`ASIA...`) | 1–12 hours | Temporary access |
 
-If the user gets `ExpiredToken`, run `bash scripts/aws-login.sh` again.
+If the user gets `ExpiredToken`, run `lyx aws login` again.
 
 ### Where credentials are stored
 
@@ -68,7 +67,7 @@ lyx deploy --all # deploy everything
 ## First AWS Deploy (Manual)
 
 ```bash
-bash scripts/aws-login.sh                              # set up credentials
+lyx aws login                                          # set up credentials
 export MONGO_URI="mongodb+srv://user:pass@cluster/lyx"
 bash scripts/deploy-aws.sh deploy
 ```
@@ -114,7 +113,7 @@ The CI user needs `scripts/iam-policy.json` attached. Covers: ECR, App Runner, I
 ## Troubleshooting
 
 1. **Permission denied**: Attach `scripts/iam-policy.json` to IAM user
-2. **ExpiredToken**: Run `bash scripts/aws-login.sh` to refresh credentials
+2. **ExpiredToken**: Run `lyx aws login` to refresh credentials
 3. **ECR repo not found**: `ensure-infra.sh` creates them automatically
 4. **JSON parse error**: Secrets have trailing newlines — `jq` handles this
 5. **App Runner stuck**: `aws apprunner start-deployment --service-arn <arn>`
@@ -123,7 +122,7 @@ The CI user needs `scripts/iam-policy.json` attached. Covers: ECR, App Runner, I
 
 ## Agent Rules
 
-- **Always check credentials first** before any AWS operation: `source ~/.lyx-aws && aws sts get-caller-identity`
-- If credentials are expired, guide the user to run `bash scripts/aws-login.sh`
+- **Always check credentials first** before any AWS operation: `lyx aws status`
+- If credentials are expired, guide the user to run `lyx aws login`
 - Never hardcode AWS credentials in code or commits
 - After fixing an issue, update `docs/errors.md` with the resolution
