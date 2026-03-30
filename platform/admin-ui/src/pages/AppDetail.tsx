@@ -14,6 +14,7 @@ interface DraftConfig { _id: string; version: string; layoutSnapshot: { name: st
 interface PublishedVersion { _id: string; version: string; publishedAt: string; assignments: Assignment[]; layoutSnapshot: { name: string; regions: Region[] }; }
 interface MFEItem { _id: string; name: string; archived: boolean; }
 interface MFEVersionItem { _id: string; version: string; slot: string; createdAt: string; remoteEntryUrl: string; }
+interface CanaryRule { slotId: string; stableMfe: string; stableVersion: string; canaryMfe: string; canaryVersion: string; percentage: number; errorThreshold: number; startedAt: string; metrics: { stable: { total: number; errors: number; errorRate: number }; canary: { total: number; errors: number; errorRate: number } } }
 
 export function AppDetail() {
   const { id } = useParams<{ id: string }>();
@@ -29,12 +30,14 @@ export function AppDetail() {
   const [publishing, setPublishing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingApp, setSavingApp] = useState(false);
-  const [tab, setTab] = useState<"config" | "versions" | "settings">("config");
+  const [tab, setTab] = useState<"config" | "versions" | "canary" | "settings">("config");
+  const [canaryRules, setCanaryRules] = useState<CanaryRule[]>([]);
+  const [canaryLoading, setCanaryLoading] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPath, setEditPath] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
-  useEffect(() => { if (id) loadAll(); }, [id, refreshKey]);
+  useEffect(() => { if (id) { loadAll(); loadCanary(); } }, [id, refreshKey]);
 
   async function loadAll() {
     try {
@@ -51,6 +54,39 @@ export function AppDetail() {
         try { vMap[mfe._id] = await api.get<MFEVersionItem[]>(`/mfes/${mfe._id}/versions`); } catch { vMap[mfe._id] = []; }
       }
       setMfeVersionsMap(vMap);
+    } catch (err: any) { setError(err.message); }
+  }
+
+  async function loadCanary() {
+    try {
+      setCanaryLoading(true);
+      const rules = await api.get<CanaryRule[]>(`/apps/${id}/canary`);
+      setCanaryRules(rules);
+    } catch { setCanaryRules([]); }
+    finally { setCanaryLoading(false); }
+  }
+
+  async function handleSetCanary(slotId: string, mfeVersionId: string, percentage: number) {
+    try {
+      await api.post(`/apps/${id}/canary`, { slotId, mfeVersionId, percentage });
+      await loadCanary();
+      setError("");
+    } catch (err: any) { setError(err.message); }
+  }
+
+  async function handlePromote(slotId: string) {
+    try {
+      await api.post(`/apps/${id}/canary/${slotId}/promote`);
+      await Promise.all([loadAll(), loadCanary()]);
+      setError("");
+    } catch (err: any) { setError(err.message); }
+  }
+
+  async function handleRollback(slotId: string) {
+    try {
+      await api.post(`/apps/${id}/canary/${slotId}/rollback`);
+      await loadCanary();
+      setError("");
     } catch (err: any) { setError(err.message); }
   }
 
@@ -119,6 +155,7 @@ export function AppDetail() {
       <div className="tabs">
         <button className={`tab ${tab === "config" ? "tab-active" : ""}`} onClick={() => setTab("config")}>Configuration</button>
         <button className={`tab ${tab === "versions" ? "tab-active" : ""}`} onClick={() => setTab("versions")}>Versions ({publishedVersions.length})</button>
+        <button className={`tab ${tab === "canary" ? "tab-active" : ""}`} onClick={() => setTab("canary")}>Canary{canaryRules.length > 0 ? ` (${canaryRules.length})` : ""}</button>
         <button className={`tab ${tab === "settings" ? "tab-active" : ""}`} onClick={() => setTab("settings")}>Settings</button>
       </div>
 
@@ -186,6 +223,19 @@ export function AppDetail() {
         </div>
       )}
 
+      {tab === "canary" && (
+        <CanaryTab
+          loading={canaryLoading}
+          rules={canaryRules}
+          draft={draft}
+          allMfes={allMfes}
+          mfeVersionsMap={mfeVersionsMap}
+          onSetCanary={handleSetCanary}
+          onPromote={handlePromote}
+          onRollback={handleRollback}
+        />
+      )}
+
       {tab === "settings" && (
         <div style={{ maxWidth: 500 }}>
           <div className="card" style={{ marginBottom: 16 }}>
@@ -217,6 +267,137 @@ export function AppDetail() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function CanaryTab({
+  loading,
+  rules,
+  draft,
+  allMfes,
+  mfeVersionsMap,
+  onSetCanary,
+  onPromote,
+  onRollback,
+}: {
+  loading: boolean;
+  rules: CanaryRule[];
+  draft: DraftConfig | null;
+  allMfes: MFEItem[];
+  mfeVersionsMap: Record<string, MFEVersionItem[]>;
+  onSetCanary: (slotId: string, mfeVersionId: string, percentage: number) => void;
+  onPromote: (slotId: string) => void;
+  onRollback: (slotId: string) => void;
+}) {
+  const [newSlot, setNewSlot] = useState("");
+  const [newMfeId, setNewMfeId] = useState("");
+  const [newVersionId, setNewVersionId] = useState("");
+  const [newPct, setNewPct] = useState(10);
+
+  if (loading) return <div style={{ padding: 24, color: "var(--text-muted)" }}>Loading canary rules...</div>;
+
+  const assignedSlots = draft?.assignments.map((a) => a.slotId) ?? [];
+  const slotsWithCanary = new Set(rules.map((r) => r.slotId));
+  const availableSlots = assignedSlots.filter((s) => !slotsWithCanary.has(s));
+
+  const selectedMfeVersions = newMfeId ? mfeVersionsMap[newMfeId] ?? [] : [];
+
+  return (
+    <div>
+      {rules.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: "var(--text-secondary)" }}>Active Canaries</h3>
+          {rules.map((rule) => (
+            <div key={rule.slotId} className="card" style={{ marginBottom: 8, padding: 16, borderLeft: "3px solid var(--warning)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span className="badge badge-accent">{rule.slotId}</span>
+                  <span className="badge badge-warning">{rule.percentage}% canary</span>
+                </div>
+                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                  Started {new Date(rule.startedAt).toLocaleString()}
+                </span>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 12 }}>
+                <div style={{ padding: 12, background: "var(--bg-tertiary)", borderRadius: "var(--radius)" }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Stable ({100 - rule.percentage}%)</div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{rule.stableMfe} <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>v{rule.stableVersion}</span></div>
+                  <div style={{ marginTop: 6, fontSize: 12 }}>
+                    <span>{rule.metrics.stable.total} requests</span>
+                    <span style={{ marginLeft: 12, color: rule.metrics.stable.errorRate > 5 ? "var(--danger)" : "var(--text-muted)" }}>
+                      {rule.metrics.stable.errorRate}% errors
+                    </span>
+                  </div>
+                </div>
+                <div style={{ padding: 12, background: "var(--warning-muted)", borderRadius: "var(--radius)" }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Canary ({rule.percentage}%)</div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{rule.canaryMfe} <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>v{rule.canaryVersion}</span></div>
+                  <div style={{ marginTop: 6, fontSize: 12 }}>
+                    <span>{rule.metrics.canary.total} requests</span>
+                    <span style={{ marginLeft: 12, color: rule.metrics.canary.errorRate > rule.errorThreshold ? "var(--danger)" : "var(--success)" }}>
+                      {rule.metrics.canary.errorRate}% errors
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button className="btn btn-danger btn-sm" onClick={() => onRollback(rule.slotId)}>Rollback</button>
+                <button className="btn btn-primary btn-sm" onClick={() => onPromote(rule.slotId)}>Promote to Stable</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="card" style={{ padding: 16 }}>
+        <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: "var(--text-secondary)" }}>Start New Canary</h3>
+
+        {availableSlots.length === 0 ? (
+          <p style={{ color: "var(--text-muted)", fontSize: 12 }}>
+            {assignedSlots.length === 0
+              ? "Publish at least one version with slot assignments first."
+              : "All slots already have an active canary."}
+          </p>
+        ) : (
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+            <div>
+              <label style={{ fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Slot</label>
+              <select className="select" value={newSlot} onChange={(e) => setNewSlot(e.target.value)} style={{ minWidth: 120 }}>
+                <option value="">— Slot —</option>
+                {availableSlots.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>MFE</label>
+              <select className="select" value={newMfeId} onChange={(e) => { setNewMfeId(e.target.value); setNewVersionId(""); }} style={{ minWidth: 140 }}>
+                <option value="">— MFE —</option>
+                {allMfes.filter((m) => !m.archived).map((m) => <option key={m._id} value={m._id}>{m.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Version</label>
+              <select className="select" value={newVersionId} onChange={(e) => setNewVersionId(e.target.value)} style={{ minWidth: 100 }}>
+                <option value="">— Version —</option>
+                {selectedMfeVersions.map((v) => <option key={v._id} value={v._id}>v{v.version}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Traffic %</label>
+              <input className="input" type="number" min={1} max={99} value={newPct} onChange={(e) => setNewPct(Number(e.target.value))} style={{ width: 70 }} />
+            </div>
+            <button
+              className="btn btn-warning btn-sm"
+              disabled={!newSlot || !newVersionId}
+              onClick={() => { onSetCanary(newSlot, newVersionId, newPct); setNewSlot(""); setNewMfeId(""); setNewVersionId(""); }}
+            >
+              Start Canary
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

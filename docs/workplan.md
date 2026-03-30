@@ -143,9 +143,50 @@ When the Project Manager moves an item from the backlog to the work plan, use th
 - **Technical risks**: High-traffic apps could generate many metrics; mitigated by client-side batching, 100-event ingestion cap, and TTL index
 - **Alternative approaches considered**: External APM (rejected: adds vendor dependency), WebSocket streaming (rejected: overkill for this use case)
 
+### Canary / Rollback per MFE
+
+- **Backlog ref**: P0-003
+- **Priority**: P0
+- **Status**: done
+- **Started**: 2026-03-24
+- **Completed**: 2026-03-24
+
+#### Architect Analysis
+- **Feasibility**: Yes — canary rules stored in existing AppConfig, runtime resolves version based on cookie + percentage
+- **System impact**: Admin API (model + canary routes + runtime), Admin UI (new Canary tab), CLI (deploy --canary flag), Types (Layout update)
+- **Dependencies**: Observability (P0-002) for error rate tracking and auto-rollback decisions
+- **Breaking changes**: No — canaryRules field defaults to empty array, runtime falls back to stable
+- **Risks**: Low — canary is opt-in, auto-rollback only triggers after minimum sample count
+
+#### Staff / Principal Review
+- **Approach**: AppConfig.canaryRules[] stores per-slot canary rules with percentage and error threshold. Runtime API uses cookie-based session stickiness for consistent user experience. Auto-rollback checks error metrics on each slot request (lazy evaluation, no scheduled job needed). Admin UI provides promote/rollback controls with real-time metrics.
+- **Effort estimate**: M (3-5 days)
+- **Files affected**: `platform/admin-api/src/db/models/app-config.ts`, `platform/admin-api/src/routes/runtime.ts`, `platform/admin-api/src/routes/canary.ts` (new), `platform/admin-ui/src/pages/AppDetail.tsx`, `platform/admin-ui/src/styles.css`, `packages/cli/src/commands/deploy.ts`
+- **Technical risks**: Cookie-based stickiness may not work with CDN edge caching; mitigated by setting `Cache-Control` with `Vary: Cookie`
+- **Alternative approaches considered**: Header-based splitting (rejected: requires load balancer), random per-request (rejected: inconsistent UX)
+
+#### Implementation
+- **Assigned to**: Engineer (AI agent)
+- **Branch**: main
+
+#### QA Checklist
+- [x] Acceptance criteria from backlog met
+- [x] Admin UI canary tab with traffic splitting controls
+- [x] Runtime API resolves canary vs stable based on cookies
+- [x] Auto-rollback when error rate exceeds threshold
+- [x] CLI --canary flag sets canary rule after deploy
+- [x] Promote and rollback endpoints functional
+
+#### Documentation Checklist
+- [x] `docs/features.md` updated
+- [x] `docs/backlog.md` item status updated
+- [x] `docs/workplan.md` sprint entry added
+
 ## Completed Sprints
 
 ### P0-001: MFE Contract Testing — Completed 2026-03-24
+### P0-002: Per-MFE Observability — Completed 2026-03-24
+### P0-003: Canary / Rollback per MFE — Completed 2026-03-24
 
 ---
 

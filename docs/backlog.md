@@ -49,7 +49,7 @@ Status: `proposed` | `architect-review` | `approved` | `in-progress` | `done` | 
 
 ### P0-003: Canary / Rollback per MFE
 
-**Status**: proposed
+**Status**: done
 **Competitive gap**: All competitors require custom-built canary and rollback. No framework provides version traffic splitting at the MFE level.
 **Description**: Deploy a new MFE version to X% of users (canary), monitor error rates, auto-rollback if error threshold exceeded.
 **Acceptance criteria**:

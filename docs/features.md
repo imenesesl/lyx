@@ -55,7 +55,7 @@ Last updated by automated sweep. Keep in sync with code changes.
 | `lyx registry` | `--url` | List MFEs registered on the dev registry |
 | `lyx publish [mfe]` | `-s`, `-t`, `-v`, `--slot` | Build, tar, upload single MFE version to server |
 | `lyx login` | `-s`, `-e`, `-p` | Authenticate and save token to `~/.lyxrc` |
-| `lyx deploy` | `-s`, `-v`, `-a/--all`, `-f/--force` | Interactive multi-MFE deploy with auto version bump and contract validation |
+| `lyx deploy` | `-s`, `-v`, `-a/--all`, `-f/--force`, `-c/--canary <pct>`, `--app <appId>` | Interactive multi-MFE deploy with auto version bump, contract validation, and canary support |
 | `lyx view` | `-s`, `--app`, `--port` | Preview published app locally using shell |
 | `lyx test` | `-d/--dir`, `--json` | Validate MFE event and shared state contracts |
 | `lyx aws login` | — | Set up AWS credentials (saved to `~/.lyx-aws`) |
@@ -69,6 +69,7 @@ Last updated by automated sweep. Keep in sync with code changes.
 - `deploy` writes updated version back to `mfe.config.json`
 - `deploy` runs contract validation before upload (blocks on errors, `--force` to skip)
 - `deploy` sends contract metadata to server for cross-app validation
+- `deploy --canary <pct> --app <appId>` creates a canary rule after upload (routes X% traffic to new version)
 - `test` scans all MFEs in the workspace (or specified directory) for contract declarations
 - `test` validates event producer/consumer compatibility and shared state schema consistency
 - `test` exits with code 1 if errors found (warnings do not block)
@@ -124,6 +125,7 @@ Regex: `/^\/([a-z0-9][a-z0-9-]{1,30}[a-z0-9]|[a-f0-9]{24})\/([^/]+)/`
 | MFEs | CRUD + `POST versions` (multipart upload) | JWT |
 | Layouts | List (public), CRUD (JWT for write) | Mixed |
 | Runtime | `GET /:accountId/:slug/{layout,mfes,mfes/slot/:s,mfes/by-name/:n}` | No (public) |
+| Canary | `GET/POST /:appId/canary`, `POST /:appId/canary/:slotId/promote`, `POST /:appId/canary/:slotId/rollback` | JWT |
 
 ### Models
 
@@ -131,7 +133,7 @@ Regex: `/^\/([a-z0-9][a-z0-9-]{1,30}[a-z0-9]|[a-f0-9]{24})\/([^/]+)/`
 |-------|-----------|-------------------|
 | Account | email, passwordHash, name, alias | email; alias (sparse) |
 | App | accountId, name, slug, description | {accountId, slug} compound |
-| AppConfig | appId, version, status, assignments[], layoutSnapshot | {appId, version} |
+| AppConfig | appId, version, status, assignments[], canaryRules[], layoutSnapshot | {appId, version} |
 | MFE | accountId, name, archived | name (global) |
 | MFEVersion | mfeId, version, slot, remoteEntryUrl, bundlePath | {mfeId, version} |
 | LayoutTemplate | name, regions[], isBuiltIn | name |
@@ -154,7 +156,7 @@ Regex: `/^\/([a-z0-9][a-z0-9-]{1,30}[a-z0-9]|[a-f0-9]{24})\/([^/]+)/`
 |------|-------|----------|
 | Dashboard | `/` | Stats cards, recent apps/MFEs |
 | AppList | `/apps` | Create app modal (with layout picker), app cards with preview links |
-| AppDetail | `/apps/:id` | Tabs: Configuration (assign MFEs), Versions, Settings. Save draft, publish |
+| AppDetail | `/apps/:id` | Tabs: Configuration (assign MFEs), Versions, Canary (traffic splitting), Settings. Save draft, publish |
 | MFEList | `/mfes` | Register MFE modal, active/archived separation |
 | MFEDetail | `/mfes/:id` | Version list, archive/delete |
 | Layouts | `/layouts` | Layout grid with preview, create/edit/delete |
@@ -320,7 +322,71 @@ Per-MFE observability built into the framework. The Shell automatically captures
 
 ---
 
-## 9. Infrastructure
+## 9. Canary / Rollback per MFE
+
+### Overview
+
+Deploy new MFE versions to a percentage of users (canary), monitor error rates in real-time, and auto-rollback if the error threshold is exceeded. This operates at the MFE slot level within a published app configuration.
+
+### Data Model
+
+Each published `AppConfig` has a `canaryRules` array:
+
+```typescript
+interface ICanaryRule {
+  slotId: string;            // which layout slot has the canary
+  canaryMfeName: string;     // canary MFE name
+  canaryMfeVersion: string;  // canary MFE version
+  canaryRemoteEntryUrl: string;
+  percentage: number;        // 1-99, traffic % routed to canary
+  errorThreshold: number;    // error rate % that triggers auto-rollback (default 5)
+  startedAt: Date;
+}
+```
+
+### Traffic Splitting
+
+1. Runtime API checks if a slot has an active canary rule
+2. Cookie `lyx_canary_{slug}_{slotId}` provides session stickiness (24h TTL)
+3. If no cookie exists, random assignment based on `percentage`
+4. Cookie is set via `Set-Cookie` header so subsequent requests stay in the same bucket
+5. MFE response includes `canary: true` flag for canary versions
+
+### Auto-Rollback
+
+On every runtime MFE request, the system checks the canary's error rate:
+- Requires minimum 10 samples before triggering
+- If error rate exceeds `errorThreshold`, the canary rule is automatically removed
+- Stable version is served to 100% of users
+- Server logs the auto-rollback event
+
+### Admin UI
+
+The AppDetail page includes a "Canary" tab with:
+- **Active canaries**: side-by-side comparison of stable vs canary metrics (request count, error rate)
+- **Promote**: moves canary version to stable for all users
+- **Rollback**: removes canary, reverts to stable version
+- **New canary**: select slot, MFE version, and traffic percentage
+
+### CLI Usage
+
+```bash
+lyx deploy --canary 10 --app <appId>   # deploy and set 10% canary
+lyx deploy --canary 50 --app <appId>   # deploy and set 50% canary
+```
+
+### API Endpoints
+
+| Endpoint | Method | Auth | Purpose |
+|----------|--------|------|---------|
+| `/api/apps/:appId/canary` | GET | JWT | List active canary rules with metrics |
+| `/api/apps/:appId/canary` | POST | JWT | Create/update canary rule for a slot |
+| `/api/apps/:appId/canary/:slotId/promote` | POST | JWT | Promote canary to stable |
+| `/api/apps/:appId/canary/:slotId/rollback` | POST | JWT | Remove canary, restore stable |
+
+---
+
+## 10. Infrastructure
 
 ### Local (Docker Compose)
 

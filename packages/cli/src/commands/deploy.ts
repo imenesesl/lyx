@@ -97,6 +97,8 @@ export function deployCommand() {
     .option("-v, --ver <version>", "Override version for all MFEs")
     .option("-a, --all", "Deploy all MFEs without prompting")
     .option("-f, --force", "Skip contract validation")
+    .option("-c, --canary <percentage>", "Deploy as canary with given traffic percentage (1-99)")
+    .option("--app <appId>", "App ID for canary deployment (required with --canary)")
     .description("Interactive deploy: pick MFEs from your project and publish them")
     .action(async (opts) => {
       const { default: chalk } = await import("chalk");
@@ -315,6 +317,34 @@ export function deployCommand() {
           const result = (await uploadRes.json()) as { remoteEntryUrl: string; _id: string };
           console.log(chalk.green(`  ✓ ${mfe.name}@${version} deployed!`));
           console.log(chalk.gray(`    Entry: ${result.remoteEntryUrl}`));
+
+          if (opts.canary && opts.app) {
+            const pct = Math.max(1, Math.min(99, parseInt(opts.canary, 10)));
+            console.log(chalk.yellow(`  Setting canary: ${pct}% traffic to v${version}...`));
+            try {
+              const canaryRes = await fetch(`${server}/api/apps/${opts.app}/canary`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  slotId: mfe.slot,
+                  mfeVersionId: result._id,
+                  percentage: pct,
+                }),
+              });
+              if (canaryRes.ok) {
+                const canaryResult = await canaryRes.json();
+                console.log(chalk.green(`  ✓ ${(canaryResult as any).message}`));
+              } else {
+                const canaryErr = await canaryRes.json();
+                console.error(chalk.red(`  Canary setup failed: ${(canaryErr as any).error}`));
+              }
+            } catch (err: any) {
+              console.error(chalk.red(`  Canary setup error: ${err.message}`));
+            }
+          }
         } catch (err: any) {
           console.error(chalk.red(`  Upload failed: ${err.message}`));
         } finally {

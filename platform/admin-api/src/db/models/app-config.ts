@@ -10,6 +10,16 @@ export interface ISlotAssignment {
   remoteEntryUrl: string;
 }
 
+export interface ICanaryRule {
+  slotId: string;
+  canaryMfeName: string;
+  canaryMfeVersion: string;
+  canaryRemoteEntryUrl: string;
+  percentage: number;
+  errorThreshold: number;
+  startedAt: Date;
+}
+
 export interface IAppConfig extends Document {
   appId: Types.ObjectId;
   version: string;
@@ -19,6 +29,7 @@ export interface IAppConfig extends Document {
     regions: ILayoutRegion[];
   };
   assignments: ISlotAssignment[];
+  canaryRules: ICanaryRule[];
   status: "draft" | "published";
   publishedAt: Date | null;
   createdAt: Date;
@@ -46,6 +57,19 @@ const layoutRegionEmbedded = new Schema(
   { _id: false }
 );
 
+const canaryRuleSchema = new Schema<ICanaryRule>(
+  {
+    slotId: { type: String, required: true },
+    canaryMfeName: { type: String, required: true },
+    canaryMfeVersion: { type: String, required: true },
+    canaryRemoteEntryUrl: { type: String, required: true },
+    percentage: { type: Number, required: true, min: 1, max: 99 },
+    errorThreshold: { type: Number, default: 5 },
+    startedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const appConfigSchema = new Schema<IAppConfig>({
   appId: { type: Schema.Types.ObjectId, ref: "App", required: true, index: true },
   version: { type: String, required: true },
@@ -58,6 +82,7 @@ const appConfigSchema = new Schema<IAppConfig>({
     required: true,
   },
   assignments: { type: [slotAssignmentSchema], default: [] },
+  canaryRules: { type: [canaryRuleSchema], default: [] },
   status: { type: String, enum: ["draft", "published"], default: "draft" },
   publishedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
