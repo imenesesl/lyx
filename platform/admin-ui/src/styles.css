@@ -1,0 +1,241 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-primary: #0f1117;
+  --bg-secondary: #1a1d27;
+  --bg-tertiary: #242836;
+  --bg-hover: #2a2e3d;
+  --border: #2e3348;
+  --text-primary: #e4e6f0;
+  --text-secondary: #8b8fa3;
+  --text-muted: #5f6378;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --accent-muted: rgba(99, 102, 241, 0.15);
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--accent-hover);
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover {
+  background: var(--bg-hover);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+.btn-danger:hover {
+  background: var(--danger-hover);
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.btn-outline:hover {
+  background: var(--accent-muted);
+  color: var(--accent-hover);
+}
+.btn-outline:disabled,
+.btn-outline[aria-disabled="true"] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus {
+  border-color: var(--accent);
+}
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.select {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+}
+.select:focus {
+  border-color: var(--accent);
+}
+
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.card-hover:hover {
+  border-color: var(--accent);
+  cursor: pointer;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.badge-accent {
+  background: var(--accent-muted);
+  color: var(--accent-hover);
+}
+.badge-success {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+}
+.badge-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+.page-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.grid {
+  display: grid;
+  gap: 20px;
+}
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+.form-group {
+  margin-bottom: 20px;
+}
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 64px 24px;
+  color: var(--text-secondary);
+}
+.empty-state h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+}

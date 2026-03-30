@@ -1,0 +1,9 @@
+packages:
+  - "packages/*"
+  - "playground/mfes/*"
+  - "platform/admin-api"
+  - "platform/admin-ui"
+  - "apps/*/mfes/*"
+onlyBuiltDependencies:
+  - nx
+  - esbuild

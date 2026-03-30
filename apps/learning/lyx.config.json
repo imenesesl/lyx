@@ -1,0 +1,6 @@
+{
+  "name": "learning",
+  "defaultLayout": "main",
+  "registryUrl": "http://localhost:3456",
+  "basePort": 3100
+}

@@ -1,0 +1,162 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install
+      - run: pnpm build
+      - run: pnpm lint
+
+  test-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install
+      - run: pnpm --filter @lyx/admin-api test
+
+  test-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install
+      - run: pnpm --filter @lyx/shell test
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install
+      - run: pnpm audit --audit-level=high || true
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build admin-api image
+        run: docker build -f platform/admin-api/Dockerfile platform/admin-api/
+
+      - name: Build admin-ui image
+        run: docker build -f platform/admin-ui/Dockerfile platform/admin-ui/
+
+      - name: Build nginx image
+        run: docker build -f platform/nginx/Dockerfile .
+
+      - name: Build SSR image
+        run: docker build -f platform/ssr/Dockerfile .
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [lint-and-build, test-api, test-shell, docker-build]
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-west-2' }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image vars
+        id: vars
+        run: |
+          ECR="${{ steps.ecr-login.outputs.registry }}"
+          ENV="${{ vars.LYX_ENV || 'production' }}"
+          SHA="${{ github.sha }}"
+          echo "api_image=${ECR}/lyx-${ENV}/admin-api:${SHA}" >> $GITHUB_OUTPUT
+          echo "ui_image=${ECR}/lyx-${ENV}/admin-ui:${SHA}" >> $GITHUB_OUTPUT
+          echo "ssr_image=${ECR}/lyx-${ENV}/ssr:${SHA}" >> $GITHUB_OUTPUT
+
+      - name: Build & push admin-api
+        run: |
+          docker build -t ${{ steps.vars.outputs.api_image }} -f platform/admin-api/Dockerfile platform/admin-api/
+          docker push ${{ steps.vars.outputs.api_image }}
+
+      - name: Build & push admin-ui
+        run: |
+          docker build -t ${{ steps.vars.outputs.ui_image }} -f platform/admin-ui/Dockerfile platform/admin-ui/
+          docker push ${{ steps.vars.outputs.ui_image }}
+
+      - name: Build & push ssr
+        run: |
+          docker build -t ${{ steps.vars.outputs.ssr_image }} -f platform/ssr/Dockerfile .
+          docker push ${{ steps.vars.outputs.ssr_image }}
+
+      - name: Deploy CloudFormation
+        run: |
+          aws cloudformation deploy \
+            --stack-name ${{ vars.LYX_STACK_NAME || 'lyx-production' }} \
+            --template-file infra/cloudformation.yml \
+            --parameter-overrides \
+              "Environment=${{ vars.LYX_ENV || 'production' }}" \
+              "JwtSecret=${{ secrets.JWT_SECRET }}" \
+              "MongoPassword=${{ secrets.MONGO_PASSWORD }}" \
+              "AdminApiImage=${{ steps.vars.outputs.api_image }}" \
+              "AdminUiImage=${{ steps.vars.outputs.ui_image }}" \
+              "SsrImage=${{ steps.vars.outputs.ssr_image }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset
+
+      - name: Show deployment URL
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name ${{ vars.LYX_STACK_NAME || 'lyx-production' }} \
+            --query "Stacks[0].Outputs[?OutputKey=='ALBURL'].OutputValue" \
+            --output text

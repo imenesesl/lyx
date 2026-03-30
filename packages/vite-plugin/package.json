@@ -1,0 +1,29 @@
+{
+  "name": "@lyx/vite-plugin",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Vite plugin that auto-generates Module Federation config from mfe.config.json",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@module-federation/vite": "^1.13.0",
+    "@lyx/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "vite": ">=5.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  },
+  "files": ["dist", "src"]
+}

@@ -1,0 +1,36 @@
+{
+  "name": "@lyx/shell",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Lyx Shell - Host application with layout engine and dynamic MFE loading",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "vite build",
+    "build:ssr": "vite build --ssr src/entry-server.tsx --config vite.ssr.config.ts",
+    "build:all": "vite build && vite build --ssr src/entry-server.tsx --config vite.ssr.config.ts",
+    "dev": "vite",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit",
+    "test": "vitest run --config vitest.test.config.ts"
+  },
+  "dependencies": {
+    "@lyx/types": "workspace:*",
+    "@lyx/vite-plugin": "workspace:*",
+    "@module-federation/runtime": "^2.2.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@vitejs/plugin-react": "^4.5.2",
+    "jsdom": "^29.0.1",
+    "vite": "^6.3.0",
+    "vitest": "^4.1.1"
+  },
+  "files": [
+    "dist",
+    "src"
+  ]
+}

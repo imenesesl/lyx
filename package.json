@@ -1,0 +1,37 @@
+{
+  "name": "@lyx/monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Lyx - MFE Framework for Vibe Coders",
+  "scripts": {
+    "dev:playground": "tsx scripts/dev-playground.ts",
+    "platform": "bash scripts/platform.sh",
+    "platform:up": "bash scripts/platform.sh up",
+    "platform:down": "bash scripts/platform.sh down",
+    "platform:logs": "bash scripts/platform.sh logs",
+    "build": "nx run-many -t build",
+    "dev": "nx run-many -t dev",
+    "lint": "nx run-many -t lint",
+    "test": "nx run-many -t test",
+    "deploy:aws": "bash scripts/deploy-aws.sh deploy",
+    "deploy:aws:update": "bash scripts/deploy-aws.sh update",
+    "deploy:aws:status": "bash scripts/deploy-aws.sh status",
+    "destroy:aws": "bash scripts/destroy-aws.sh"
+  },
+  "nx": {},
+  "pnpm": {
+    "onlyBuiltDependencies": ["nx", "mongodb-memory-server", "esbuild"]
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "nx": "^22.6.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

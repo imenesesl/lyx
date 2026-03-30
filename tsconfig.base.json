@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "types": ["node"],
+    "paths": {
+      "@lyx/types": ["./packages/types/src/index.ts"],
+      "@lyx/sdk": ["./packages/sdk/src/index.ts"],
+      "@lyx/vite-plugin": ["./packages/vite-plugin/src/index.ts"],
+      "@lyx/registry": ["./packages/registry/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}

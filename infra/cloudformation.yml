@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Lyx MFE Platform - App Runner + S3
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+  MongoUri:
+    Type: String
+    NoEcho: true
+    Description: MongoDB connection string (e.g. MongoDB Atlas)
+  AdminApiImage:
+    Type: String
+  AdminUiImage:
+    Type: String
+  SsrImage:
+    Type: String
+  BucketName:
+    Type: String
+  AppRunnerEcrRoleArn:
+    Type: String
+  AppRunnerInstanceRoleArn:
+    Type: String
+
+Resources:
+
+  AdminApiService:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: !Sub lyx-${Environment}-admin-api
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          AccessRoleArn: !Ref AppRunnerEcrRoleArn
+        AutoDeploymentsEnabled: false
+        ImageRepository:
+          ImageIdentifier: !Ref AdminApiImage
+          ImageRepositoryType: ECR
+          ImageConfiguration:
+            Port: "4000"
+            RuntimeEnvironmentVariables:
+              - Name: NODE_ENV
+                Value: production
+              - Name: PORT
+                Value: "4000"
+              - Name: MONGO_URI
+                Value: !Ref MongoUri
+              - Name: MINIO_ENDPOINT
+                Value: s3
+              - Name: MINIO_PORT
+                Value: "443"
+              - Name: MINIO_ACCESS_KEY
+                Value: none
+              - Name: MINIO_SECRET_KEY
+                Value: none
+              - Name: MINIO_USE_SSL
+                Value: "true"
+              - Name: MINIO_BUCKET
+                Value: !Ref BucketName
+              - Name: JWT_SECRET
+                Value: !Ref JwtSecret
+              - Name: CORS_ORIGIN
+                Value: "*"
+              - Name: AWS_REGION
+                Value: !Ref "AWS::Region"
+      InstanceConfiguration:
+        Cpu: "1024"
+        Memory: "2048"
+        InstanceRoleArn: !Ref AppRunnerInstanceRoleArn
+      HealthCheckConfiguration:
+        Protocol: HTTP
+        Path: /api/health
+        Interval: 10
+        Timeout: 5
+        HealthyThreshold: 1
+        UnhealthyThreshold: 5
+
+  AdminUiService:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: !Sub lyx-${Environment}-admin-ui
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          AccessRoleArn: !Ref AppRunnerEcrRoleArn
+        AutoDeploymentsEnabled: false
+        ImageRepository:
+          ImageIdentifier: !Ref AdminUiImage
+          ImageRepositoryType: ECR
+          ImageConfiguration:
+            Port: "4001"
+      InstanceConfiguration:
+        Cpu: "256"
+        Memory: "512"
+      HealthCheckConfiguration:
+        Protocol: HTTP
+        Path: /
+        Interval: 10
+
+  SsrService:
+    Type: AWS::AppRunner::Service
+    DependsOn: AdminApiService
+    Properties:
+      ServiceName: !Sub lyx-${Environment}-ssr
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          AccessRoleArn: !Ref AppRunnerEcrRoleArn
+        AutoDeploymentsEnabled: false
+        ImageRepository:
+          ImageIdentifier: !Ref SsrImage
+          ImageRepositoryType: ECR
+          ImageConfiguration:
+            Port: "4002"
+            RuntimeEnvironmentVariables:
+              - Name: API_URL
+                Value: !Sub https://${AdminApiService.ServiceUrl}
+              - Name: PORT
+                Value: "4002"
+      InstanceConfiguration:
+        Cpu: "1024"
+        Memory: "2048"
+      HealthCheckConfiguration:
+        Protocol: HTTP
+        Path: /health
+        Interval: 10
+
+  AdminApiAutoScaling:
+    Type: AWS::AppRunner::AutoScalingConfiguration
+    Properties:
+      AutoScalingConfigurationName: !Sub lyx-${Environment}-api-scaling
+      MaxConcurrency: 100
+      MaxSize: 5
+      MinSize: 1
+
+  SsrAutoScaling:
+    Type: AWS::AppRunner::AutoScalingConfiguration
+    Properties:
+      AutoScalingConfigurationName: !Sub lyx-${Environment}-ssr-scaling
+      MaxConcurrency: 100
+      MaxSize: 10
+      MinSize: 1
+
+Outputs:
+  AdminApiUrl:
+    Description: Admin API URL
+    Value: !Sub https://${AdminApiService.ServiceUrl}
+  AdminUiUrl:
+    Description: Admin UI URL
+    Value: !Sub https://${AdminUiService.ServiceUrl}
+  SsrUrl:
+    Description: SSR / Apps URL
+    Value: !Sub https://${SsrService.ServiceUrl}
+  BucketName:
+    Value: !Ref BucketName

@@ -1,0 +1,11 @@
+{
+  "name": "@lyx/ssr",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "express": "^4.21.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@mfe/sidebar",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@lyx/sdk": "workspace:*",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@lyx/vite-plugin": "workspace:*",
+    "@vitejs/plugin-react": "^4.5.2",
+    "vite": "^6.3.0"
+  }
+}

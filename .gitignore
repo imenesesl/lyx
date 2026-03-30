@@ -1,0 +1,12 @@
+node_modules
+dist
+.nx
+.cache
+*.tsbuildinfo
+.env
+.env.local
+.__mf__temp
+.lyx-preview
+vite.preview.config.ts
+infra/.secrets
+.lyx-aws

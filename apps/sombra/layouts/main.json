@@ -1,0 +1,27 @@
+{
+  "name": "main",
+  "description": "Default layout with header, sidebar, and main content",
+  "regions": [
+    {
+      "id": "header",
+      "slot": "header",
+      "position": "top"
+    },
+    {
+      "id": "sidebar",
+      "slot": "sidebar",
+      "position": "left",
+      "size": "250px"
+    },
+    {
+      "id": "main",
+      "slot": "main",
+      "position": "center"
+    },
+    {
+      "id": "footer",
+      "slot": "footer",
+      "position": "bottom"
+    }
+  ]
+}

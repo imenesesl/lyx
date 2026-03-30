@@ -1,0 +1,16 @@
+node_modules
+.nx
+.cache
+dist
+dist-ssr
+*.tsbuildinfo
+.git
+.github
+infra
+playground
+apps
+scripts
+.env
+.env.local
+.env.production
+*.md
