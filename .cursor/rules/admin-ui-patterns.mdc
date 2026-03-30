@@ -1,0 +1,52 @@
+---
+description: Admin UI React component and styling conventions
+globs: "platform/admin-ui/**/*.{tsx,ts,css}"
+alwaysApply: false
+---
+
+# Admin UI Patterns
+
+## Architecture
+
+- React SPA with React Router (`basename="/admin"`)
+- Auth context (`useAuth`) provides `account`, `login`, `logout`, `refreshAccount`
+- Refresh context (`useRefresh`) provides `refreshKey`, `triggerRefresh`
+- API calls via `fetch` to `/api/...` (proxied by `serve.cjs` in production)
+
+## Component Rules
+
+1. All pages use `useRefresh()` and re-fetch data when `refreshKey` changes
+2. Show `PageSkeleton` or `ListSkeleton` during loading — never blank screens
+3. URLs displaying apps use `/{account.alias || account.id}/{slug}/`
+4. Use CSS classes from `styles.css` — no inline styles for colors/spacing
+5. Modals use `.modal-overlay` + `.modal-content` classes
+6. Tabs use `.tabs` + `.tab` + `.tab-active` classes
+
+## Page Structure
+
+- `Dashboard.tsx` — stats overview, recent items
+- `AppList.tsx` — list apps, create new
+- `AppDetail.tsx` — tabbed (Configuration, Versions, Settings)
+- `MFEList.tsx` — list MFEs (active/archived)
+- `MFEDetail.tsx` — version history, metadata
+- `Layouts.tsx` — available layout templates
+- `Settings.tsx` — account alias, profile
+- `Login.tsx` / `Register.tsx` — auth forms
+
+## API Pattern
+
+```tsx
+const [data, setData] = useState(null);
+const [loading, setLoading] = useState(true);
+const { refreshKey } = useRefresh();
+
+useEffect(() => {
+  setLoading(true);
+  fetch("/api/endpoint", { headers: { Authorization: `Bearer ${token}` }})
+    .then(r => r.json())
+    .then(d => setData(d.data))
+    .finally(() => setLoading(false));
+}, [refreshKey]);
+
+if (loading) return <PageSkeleton />;
+```

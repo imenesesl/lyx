@@ -1,0 +1,36 @@
+---
+description: Shell and SSR server conventions
+globs: "packages/shell/**/*.{ts,tsx},platform/ssr/**/*.{js,ts}"
+alwaysApply: false
+---
+
+# Shell & SSR Conventions
+
+## Shell (packages/shell/)
+
+- Entry client: `src/entry-client.tsx` — hydrates with `initialData` from SSR
+- Entry server: `src/entry-server.tsx` — `renderToPipeableStream` with streaming
+- `ShellApp.tsx` — parses URL `/{accountId}/{slug}/` to determine app
+- `MFESlot.tsx` — loads remotes via Module Federation runtime
+- `LyxDevtools.tsx` — shared state inspector (dev only)
+
+## URL Parsing
+
+The regex for accountId accepts both MongoDB ObjectIds and custom aliases:
+```
+/^\/([a-z0-9][a-z0-9-]{1,30}[a-z0-9]|[a-f0-9]{24})\/([^/]+)/
+```
+
+## Module Federation
+
+- Each MFE gets a **unique** remote name: `{mfeName}_v{version}` (underscores replace dots)
+- This prevents MF runtime cache collisions when the same MFE has different versions in different slots
+- `loadRemote` result must be cast: `mf.loadRemote(...) as { default: ComponentType } | null`
+
+## SSR Server (platform/ssr/)
+
+- `server.js` — Express with `/health`, `/_assets/` (static), `/:accountId/:slug` (SSR)
+- Reserved paths (`health`, `api`, `storage`, `_assets`, `admin`, etc.) are NOT treated as accountId
+- API proxy: `/api/*` → admin-api, `/storage/*` → S3
+- Assets use `/_assets/` base path (not `/apps/`)
+- Vite configs: `base: "/_assets/"` in both `vite.config.ts` and `vite.ssr.config.ts`

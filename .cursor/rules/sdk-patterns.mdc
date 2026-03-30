@@ -1,0 +1,62 @@
+---
+description: SDK usage patterns for MFE development
+globs: "**/mfes/**/src/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Lyx SDK Patterns
+
+## Event Bus
+
+```tsx
+import { emit, on, useEvent } from "@lyx/sdk";
+
+// Fire-and-forget event
+emit("cart:add", { productId: "123" });
+
+// Subscribe in a component (auto-cleanup)
+useEvent("cart:add", (data) => {
+  console.log("Added:", data.productId);
+});
+
+// Manual subscribe (remember to unsubscribe)
+const unsub = on("cart:add", handler);
+// later: unsub();
+```
+
+Event naming: `domain:action` (e.g. `cart:add`, `user:login`, `cat:theme`).
+
+## Shared State
+
+```tsx
+import { useSharedState } from "@lyx/sdk";
+
+const [user, setUser] = useSharedState("user", { name: "", loggedIn: false });
+```
+
+- Key must be unique across all MFEs
+- Initial value only applied if key is not already set
+- All MFEs sharing the same key see updates instantly
+
+## Navigation
+
+```tsx
+import { navigate } from "@lyx/sdk";
+
+navigate("dashboard");           // navigate within the app
+navigate("settings", "main");    // target a specific slot
+```
+
+## Dynamic MFE Loading
+
+```tsx
+import { MFELoader } from "@lyx/sdk";
+
+<MFELoader name="contact-form" fallback={<p>Loading...</p>} />
+```
+
+## Anti-patterns
+
+- Never use `window.postMessage` — use `emit`/`on`
+- Never import from another MFE directly — use events or shared state
+- Never hardcode URLs — use SDK config

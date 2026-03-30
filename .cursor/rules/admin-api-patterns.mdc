@@ -1,0 +1,36 @@
+---
+description: Admin API conventions for Express routes and MongoDB models
+globs: "platform/admin-api/**/*.{ts,js}"
+alwaysApply: false
+---
+
+# Admin API Patterns
+
+## Route Structure
+
+Routes live in `platform/admin-api/src/routes/`:
+- `auth.ts` — login, register, alias management
+- `apps.ts` — CRUD for applications
+- `mfes.ts` — CRUD for MFE metadata
+- `app-config.ts` — slot assignment, draft/publish
+- `runtime.ts` — public API consumed by Shell/SSR (`/:accountId/:slug/...`)
+- `layouts.ts` — layout definitions
+
+## Database Models
+
+Models in `platform/admin-api/src/db/models/`:
+- `Account` — user accounts (email, password hash, alias)
+- `App` — applications (name, slug, accountId, layout, assignments)
+- `MFE` — micro frontend metadata (name, slot)
+- `MFEVersion` — versioned bundles (semver, remoteEntryUrl, status)
+- `Layout` — layout templates (name, slots array)
+
+## Key Rules
+
+1. Runtime routes (`/api/runtime/`) are **public** (no auth) — consumed by Shell
+2. All other routes require JWT via `authMiddleware`
+3. Always filter by `accountId` in queries — never return data from other accounts
+4. The `resolveAccountId` helper accepts both ObjectId and custom alias
+5. When resolving `remoteEntryUrl`, always read from `MFEVersion` record — never trust client-sent URLs
+6. Use `pino` for logging, never `console.log`
+7. Response format: `{ data }` for success, `{ error: "message" }` for errors

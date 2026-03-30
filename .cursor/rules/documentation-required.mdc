@@ -1,0 +1,48 @@
+---
+description: Every code change must be documented — enforces the feedback loop
+alwaysApply: true
+---
+
+# Documentation Requirements
+
+## On Every Change
+
+After modifying code, update the relevant documentation:
+
+1. **New feature or behavior** → Update `docs/features.md` (relevant section)
+2. **Bug fix** → Add entry to `docs/errors.md` with cause, fix, prevention
+3. **Architecture change** → Update `docs/architecture.md` with decision record
+4. **New CLI command or option** → Update README.md CLI Reference table
+5. **New API endpoint** → Update `docs/features.md` Admin API section
+6. **New UI page or component** → Update `docs/features.md` Admin UI section
+7. **Infrastructure change** → Update `docs/features.md` Infrastructure section
+
+## On Every Error Resolution
+
+Always add to `docs/errors.md`:
+
+```markdown
+### [Descriptive Title]
+**Category**: Build | Deploy | CI | Runtime | Auth | Infra
+**Symptom**: What happens
+**Cause**: Why it happens
+**Fix**: How to fix it
+**Prevention**: How to prevent it
+```
+
+## Commit Message Convention
+
+```
+feat: add new feature
+fix: resolve bug
+docs: update documentation
+chore: maintenance task
+refactor: code restructuring
+```
+
+## Self-Improvement Loop
+
+1. Error occurs → fix it → document in `docs/errors.md`
+2. Pattern emerges → add rule to `.cursor/rules/`
+3. Workflow changes → update relevant skill in `.cursor/skills/`
+4. Feature added → update `docs/features.md` + README.md

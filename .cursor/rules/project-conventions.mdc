@@ -1,0 +1,75 @@
+---
+description: Core Lyx project conventions — always follow these patterns
+alwaysApply: true
+---
+
+# Lyx Project Conventions
+
+## Monorepo Structure
+
+- **packages/** — framework packages (`@lyx/types`, `@lyx/sdk`, `@lyx/shell`, `@lyx/cli`, `@lyx/registry`, `@lyx/vite-plugin`)
+- **platform/** — admin services (`admin-api`, `admin-ui`, `ssr`, `nginx`)
+- **apps/** — user projects created with `lyx init`
+- **scripts/** — automation (`platform.sh`, `deploy-aws.sh`, `ensure-infra.sh`)
+
+## CLI is the single source of truth
+
+All MFE operations go through the `lyx` CLI. Never create MFEs manually.
+
+```bash
+lyx init <project-name>      # creates apps/<project-name>/
+lyx create <mfe> --slot main # creates mfes/<mfe>/ inside the project
+lyx deploy                   # builds, versions, uploads MFEs
+lyx login -s <url>           # authenticate to a server
+```
+
+## MFE Rules
+
+1. Every MFE must `export default` a React component from `src/index.tsx`
+2. MFE config lives in `mfe.config.json` (name, slot, version)
+3. Versions auto-increment on `lyx deploy` — never set manually
+4. Slots: `root`, `header`, `sidebar`, `main`, `footer`
+5. MFEs are independent — no direct imports between them
+6. Communication via SDK: `emit`/`on` for events, `useSharedState` for shared data
+
+## Code Standards
+
+- Language: TypeScript (strict)
+- All user-facing text, comments, docs: **English only**
+- No `any` types unless unavoidable — prefer explicit typing
+- Functional React components only — no class components
+- Use `@lyx/sdk` for inter-MFE communication, never `window` directly
+- Error handling: always catch and log, never swallow errors
+
+## Package Manager
+
+- **pnpm** only (workspace-based)
+- Run `pnpm install` from the monorepo root after adding dependencies
+- Use `pnpm nx run-many -t build` for multi-package builds
+
+## Git
+
+- Branch: `main` is production
+- Commits: conventional commits (`feat:`, `fix:`, `chore:`, `docs:`)
+- PR labels: always add `ai` and `cursor`
+
+## Documentation
+
+- `README.md` — user-facing guide, always up-to-date
+- `docs/features.md` — complete feature inventory (SDK, CLI, Shell, API, UI, Infra)
+- `docs/errors.md` — error knowledge base with cause/fix/prevention
+- `docs/architecture.md` — system design, data flow, decision records
+- `docs/roles.md` — role-based review framework (Architect, Staff, Dev, QA)
+
+## Expert Skills (`.cursor/skills/`)
+
+| Skill | Domain |
+|-------|--------|
+| `lyx-mfe-workflow` | Creating and deploying MFEs |
+| `lyx-deploy` | AWS deployment and local platform |
+| `lyx-debug` | Error diagnosis and resolution |
+| `lyx-sdk-expert` | SDK internals (events, state, navigation, loading) |
+| `lyx-cli-expert` | CLI commands (init, create, deploy, login, view) |
+| `lyx-shell-expert` | Shell, layouts, Module Federation, SSR |
+| `lyx-admin-api-expert` | API routes, models, auth, storage, publish flow |
+| `lyx-infra-expert` | Docker, Nginx, AWS, CI/CD pipeline |

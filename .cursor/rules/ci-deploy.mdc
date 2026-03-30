@@ -1,0 +1,39 @@
+---
+description: CI/CD and deployment conventions
+globs: ".github/**/*.yml,scripts/*.sh"
+alwaysApply: false
+---
+
+# CI/CD Conventions
+
+## GitHub Actions Workflow
+
+The CI (`ci.yml`) has these jobs in order:
+1. `build-and-test` — pnpm install, Nx build/lint/test (framework packages only)
+2. `detect-changes` — git diff + AWS service count check
+3. `setup-infra` — `ensure-infra.sh` creates ECR repos, IAM roles, S3 bucket
+4. `deploy-admin-api` / `deploy-admin-ui` / `deploy-ssr` — build, push, create/update
+5. `show-urls` — prints service URLs
+
+## Deploy Rules
+
+1. **Infrastructure-first**: `ensure-infra.sh` runs before any deploy — idempotent
+2. **Service check**: if < 3 App Runner services exist, deploy all (first deploy)
+3. **Change detection**: `scripts/`, `.github/` changes → deploy all
+4. **JSON safety**: always use `jq` to build env var JSON — never string interpolation with secrets
+5. **Concurrency**: only one workflow per branch at a time (`cancel-in-progress: false`)
+6. `ensure-service.sh` handles both create and update — pass 5 args: name, image, port, env_vars_json, needs_instance_role
+
+## Secret Handling
+
+- Secrets with potential newlines (like MONGO_URI) must be passed via `jq --arg`
+- Never interpolate `${{ secrets.* }}` directly into JSON strings
+- AWS_REGION is stored as a secret (not variable)
+
+## Script Convention
+
+- All scripts use `set -euo pipefail`
+- Use `REGION="${REGION:-${AWS_REGION:-us-east-1}}"` for region resolution
+- Use `::group::` / `::endgroup::` for GitHub Actions log grouping
+- Naming: `lyx-production-<service>` for App Runner services
+- Bucket naming: `lyx-bundles-<account-id>-production`

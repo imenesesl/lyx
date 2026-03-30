@@ -1,0 +1,76 @@
+name: Documentation Check
+
+on:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check documentation was updated
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only origin/main...HEAD 2>/dev/null || echo "")
+
+          if [ -z "$CHANGED" ]; then
+            echo "No changes detected"
+            exit 0
+          fi
+
+          HAS_CODE_CHANGES=false
+          HAS_DOC_CHANGES=false
+
+          if echo "$CHANGED" | grep -qE '^(packages/|platform/|scripts/)'; then
+            HAS_CODE_CHANGES=true
+          fi
+
+          if echo "$CHANGED" | grep -qE '^(docs/|README\.md|\.cursor/)'; then
+            HAS_DOC_CHANGES=true
+          fi
+
+          echo "Code changes: $HAS_CODE_CHANGES"
+          echo "Doc changes: $HAS_DOC_CHANGES"
+
+          if [ "$HAS_CODE_CHANGES" = "true" ] && [ "$HAS_DOC_CHANGES" = "false" ]; then
+            echo ""
+            echo "::warning::Code was changed but no documentation was updated."
+            echo "::warning::Please update the relevant docs:"
+            echo "::warning::  - docs/features.md (feature changes)"
+            echo "::warning::  - docs/errors.md (bug fixes)"
+            echo "::warning::  - docs/architecture.md (design decisions)"
+            echo "::warning::  - README.md (user-facing changes)"
+            echo ""
+            echo "Changed code files:"
+            echo "$CHANGED" | grep -E '^(packages/|platform/|scripts/)' || true
+          fi
+
+      - name: Validate error docs format
+        run: |
+          if [ -f docs/errors.md ]; then
+            ENTRIES=$(grep -c "^### " docs/errors.md || echo "0")
+            CATEGORIES=$(grep -c "^\*\*Category\*\*:" docs/errors.md || echo "0")
+            echo "Error entries: $ENTRIES"
+            echo "With categories: $CATEGORIES"
+
+            if [ "$ENTRIES" -ne "$CATEGORIES" ] 2>/dev/null; then
+              echo "::warning::Some error entries in docs/errors.md are missing the Category field"
+            fi
+          fi
+
+      - name: Check features doc freshness
+        run: |
+          if [ -f docs/features.md ]; then
+            SDK_EXPORTS=$(grep -c "^| \`" docs/features.md || echo "0")
+            echo "Features doc has $SDK_EXPORTS documented exports"
+
+            if [ "$SDK_EXPORTS" -lt 10 ]; then
+              echo "::warning::docs/features.md may be out of date (fewer than 10 exports documented)"
+            fi
+          else
+            echo "::error::docs/features.md is missing"
+            exit 1
+          fi
