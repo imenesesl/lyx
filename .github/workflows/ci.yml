@@ -10,7 +10,19 @@ on:
       force_deploy:
         description: 'Force deploy all services'
         type: boolean
-        default: true
+        default: false
+      deploy_ssr:
+        description: 'Force deploy SSR (Shell)'
+        type: boolean
+        default: false
+      deploy_admin_ui:
+        description: 'Force deploy Admin UI'
+        type: boolean
+        default: false
+      deploy_admin_api:
+        description: 'Force deploy Admin API'
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -87,9 +99,26 @@ jobs:
             exit 0
           }
 
-          # 1) Manual trigger → deploy all
+          # 1) Manual trigger with individual selections
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            deploy_all "Manual trigger — deploying everything"
+            if [ "${{ inputs.force_deploy }}" = "true" ]; then
+              deploy_all "Manual trigger — force deploying everything"
+            fi
+
+            api="${{ inputs.deploy_admin_api }}"
+            ui="${{ inputs.deploy_admin_ui }}"
+            ssr="${{ inputs.deploy_ssr }}"
+
+            if [ "$api" = "true" ] || [ "$ui" = "true" ] || [ "$ssr" = "true" ]; then
+              echo "Manual trigger — selective deploy: api=$api ui=$ui ssr=$ssr"
+              echo "admin_api=$api" >> $GITHUB_OUTPUT
+              echo "admin_ui=$ui" >> $GITHUB_OUTPUT
+              echo "ssr=$ssr" >> $GITHUB_OUTPUT
+              echo "any_deploy=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            deploy_all "Manual trigger (no selection) — deploying everything"
           fi
 
           # 2) Check if App Runner services exist; if not → deploy all
@@ -131,7 +160,7 @@ jobs:
 
           if echo "$CHANGED" | grep -qE '^platform/admin-api/'; then admin_api=true; fi
           if echo "$CHANGED" | grep -qE '^platform/admin-ui/'; then admin_ui=true; fi
-          if echo "$CHANGED" | grep -qE '^(platform/ssr/|packages/shell/)'; then ssr=true; fi
+          if echo "$CHANGED" | grep -qE '^(platform/ssr/|packages/shell/|packages/sdk/|packages/types/)'; then ssr=true; fi
 
           any_deploy=false
           if [ "$admin_api" = "true" ] || [ "$admin_ui" = "true" ] || [ "$ssr" = "true" ]; then
