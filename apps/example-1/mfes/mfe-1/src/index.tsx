@@ -1,19 +1,18 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { on } from "@lyx/sdk";
 
-type Mood = "happy" | "neutral" | "sad" | "sleeping" | "eating" | "playing";
+type Mood = "happy" | "neutral" | "sad" | "sleeping" | "eating" | "playing" | "bathing" | "studying" | "exercising" | "meditating";
 
 interface Stats {
   hunger: number;
   happiness: number;
   energy: number;
+  hygiene: number;
+  intelligence: number;
 }
 
 const PX = 4;
-
-function px(n: number) {
-  return `${n * PX}px`;
-}
+function px(n: number) { return `${n * PX}px`; }
 
 interface CatPalette {
   label: string;
@@ -47,9 +46,11 @@ function getColors(palette: CatPalette, night = false) {
       screenBorder: "#2e2755",
       button1: "#cc4577", button2: "#3a9e4d", button3: "#ccaa2e",
       barBg: "#2a2340", barHunger: "#cc5555", barHappy: "#ccaa2e", barEnergy: "#3a9e4d",
+      barHygiene: "#4a90d9", barIntel: "#c77dba",
       stars: "#ffd43b",
       text: "#b8aed5", textDim: "#6a5f8a",
       food: "#cc7f36", heart: "#cc4577", zzz: "#6a5f8a", ball: "#3ba89e",
+      betaBg: "#1e1840", betaBorder: "#3a2f6a",
     };
   }
   return {
@@ -63,18 +64,23 @@ function getColors(palette: CatPalette, night = false) {
     screenBorder: "#e8d5b5",
     button1: "#ff6b9d", button2: "#51cf66", button3: "#ffd43b",
     barBg: "#f0e4d0", barHunger: "#ff6b6b", barHappy: "#ffd43b", barEnergy: "#51cf66",
+    barHygiene: "#5b9bd5", barIntel: "#b07ab1",
     stars: "#ffa726",
     text: "#4a3f2e", textDim: "#8a7f6d",
     food: "#ff9f43", heart: "#ff6b9d", zzz: "#8a7f6d", ball: "#4ecdc4",
+    betaBg: "#f5f0ff", betaBorder: "#d4c5f0",
   };
 }
 
-const COLORS = getColors(CAT_PALETTES[0]);
-
 function PixelCat({ mood, frame, colors }: { mood: Mood; frame: number; colors: ReturnType<typeof getColors> }) {
   const blinkFrame = frame % 60 < 3;
-  const bounce = mood === "playing" ? (frame % 8 < 4 ? -1 : 0) : 0;
+  const bounce = mood === "playing" || mood === "exercising" ? (frame % 8 < 4 ? -1 : 0) : 0;
   const tailWag = frame % 10 < 5 ? 1 : -1;
+
+  const isBathing = mood === "bathing";
+  const isStudying = mood === "studying";
+  const isMeditating = mood === "meditating";
+  const isExercising = mood === "exercising";
 
   return (
     <div style={{ position: "relative", width: px(20), height: px(20), margin: "0 auto", transform: `translateY(${px(bounce)})`, transition: "transform 0.15s" }}>
@@ -88,7 +94,7 @@ function PixelCat({ mood, frame, colors }: { mood: Mood; frame: number; colors: 
       <div style={{ position: "absolute", left: px(2), top: px(3), width: px(16), height: px(12), background: colors.body, borderRadius: px(3) }} />
 
       {/* Eyes */}
-      {mood === "sleeping" ? (
+      {mood === "sleeping" || isMeditating ? (
         <>
           <div style={{ position: "absolute", left: px(5), top: px(7), width: px(3), height: px(1), background: colors.eye, borderRadius: 0 }} />
           <div style={{ position: "absolute", right: px(5), top: px(7), width: px(3), height: px(1), background: colors.eye, borderRadius: 0 }} />
@@ -104,7 +110,7 @@ function PixelCat({ mood, frame, colors }: { mood: Mood; frame: number; colors: 
           <div style={{ position: "absolute", left: px(6), top: px(7), width: px(1), height: px(1), background: colors.pupil }} />
           <div style={{ position: "absolute", right: px(5), top: px(6), width: px(3), height: px(3), background: colors.eye, borderRadius: px(1) }} />
           <div style={{ position: "absolute", right: px(6), top: px(7), width: px(1), height: px(1), background: colors.pupil }} />
-          {mood === "happy" && (
+          {(mood === "happy" || isStudying) && (
             <>
               <div style={{ position: "absolute", left: px(5), top: px(8), width: px(3), height: px(1), background: colors.body, borderRadius: "0 0 50% 50%" }} />
               <div style={{ position: "absolute", right: px(5), top: px(8), width: px(3), height: px(1), background: colors.body, borderRadius: "0 0 50% 50%" }} />
@@ -114,7 +120,7 @@ function PixelCat({ mood, frame, colors }: { mood: Mood; frame: number; colors: 
       )}
 
       {/* Cheeks */}
-      {(mood === "happy" || mood === "eating") && (
+      {(mood === "happy" || mood === "eating" || isBathing) && (
         <>
           <div style={{ position: "absolute", left: px(3), top: px(9), width: px(2), height: px(1), background: colors.cheek, opacity: 0.6, borderRadius: px(1) }} />
           <div style={{ position: "absolute", right: px(3), top: px(9), width: px(2), height: px(1), background: colors.cheek, opacity: 0.6, borderRadius: px(1) }} />
@@ -127,7 +133,7 @@ function PixelCat({ mood, frame, colors }: { mood: Mood; frame: number; colors: 
       {/* Mouth */}
       {mood === "eating" ? (
         <div style={{ position: "absolute", left: "50%", top: px(10), width: px(3), height: px(2), background: colors.mouth, transform: "translateX(-50%)", borderRadius: `0 0 ${px(1)} ${px(1)}`, opacity: frame % 4 < 2 ? 1 : 0.7 }} />
-      ) : mood === "happy" ? (
+      ) : mood === "happy" || isBathing ? (
         <div style={{ position: "absolute", left: "50%", top: px(10), width: px(4), height: px(1), transform: "translateX(-50%)", borderBottom: `${px(1)} solid ${colors.mouth}`, borderRadius: `0 0 ${px(2)} ${px(2)}` }} />
       ) : mood === "sad" ? (
         <div style={{ position: "absolute", left: "50%", top: px(11), width: px(4), height: px(1), transform: "translateX(-50%)", borderTop: `${px(1)} solid ${colors.mouth}`, borderRadius: `${px(2)} ${px(2)} 0 0` }} />
@@ -164,45 +170,51 @@ function PixelCat({ mood, frame, colors }: { mood: Mood; frame: number; colors: 
           <div style={{ position: "absolute", right: px(-1), top: px(3), color: colors.heart, fontSize: "6px", opacity: 0.7 }}>♥</div>
         </>
       )}
+      {isBathing && (
+        <>
+          {[0, 1, 2].map((i) => (
+            <div key={i} style={{ position: "absolute", left: px(3 + i * 5), top: px(-2 + (frame % 6 < 3 ? 0 : -1)), fontSize: "8px", opacity: frame % 8 < 4 ? 0.8 : 0.4, transition: "opacity 0.2s" }}>💧</div>
+          ))}
+        </>
+      )}
+      {isStudying && (
+        <div style={{ position: "absolute", left: px(-3), top: px(6), fontSize: "10px", opacity: frame % 10 < 5 ? 1 : 0.5, transition: "opacity 0.3s" }}>📖</div>
+      )}
+      {isExercising && frame % 10 < 5 && (
+        <div style={{ position: "absolute", right: px(-3), top: px(4), fontSize: "8px" }}>💪</div>
+      )}
+      {isMeditating && (
+        <div style={{ position: "absolute", left: "50%", top: px(-3), transform: "translateX(-50%)", fontSize: "10px", opacity: 0.4 + 0.3 * Math.sin(frame / 5) }}>✨</div>
+      )}
     </div>
   );
 }
 
-function StatBar({ label, value, color, icon }: { label: string; value: number; color: string; icon: string }) {
+function StatBar({ label, value, color, icon, colors }: { label: string; value: number; color: string; icon: string; colors: ReturnType<typeof getColors> }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "6px", width: "100%" }}>
       <span style={{ fontSize: "12px", width: "16px", textAlign: "center" }}>{icon}</span>
-      <span style={{ fontSize: "9px", fontFamily: "'Press Start 2P', monospace", color: COLORS.textDim, width: "36px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</span>
-      <div style={{ flex: 1, height: "8px", background: COLORS.barBg, borderRadius: "2px", overflow: "hidden", border: `1px solid ${COLORS.screenBorder}` }}>
+      <span style={{ fontSize: "9px", fontFamily: "'Press Start 2P', monospace", color: colors.textDim, width: "36px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</span>
+      <div style={{ flex: 1, height: "8px", background: colors.barBg, borderRadius: "2px", overflow: "hidden", border: `1px solid ${colors.screenBorder}` }}>
         <div style={{ width: `${value}%`, height: "100%", background: color, transition: "width 0.5s ease", boxShadow: value > 20 ? `0 0 4px ${color}40` : undefined }} />
       </div>
-      <span style={{ fontSize: "8px", fontFamily: "'Press Start 2P', monospace", color: value < 30 ? "#ff6b6b" : COLORS.text, width: "28px", textAlign: "right" }}>{Math.round(value)}</span>
+      <span style={{ fontSize: "8px", fontFamily: "'Press Start 2P', monospace", color: value < 30 ? "#ff6b6b" : colors.text, width: "28px", textAlign: "right" }}>{Math.round(value)}</span>
     </div>
   );
 }
 
 function ActionButton({ label, icon, color, onClick, disabled }: { label: string; icon: string; color: string; onClick: () => void; disabled?: boolean }) {
   const [pressed, setPressed] = useState(false);
-
   return (
     <button
       onClick={() => { if (!disabled) { setPressed(true); onClick(); setTimeout(() => setPressed(false), 150); } }}
       disabled={disabled}
       style={{
-        background: disabled ? COLORS.barBg : color,
-        border: "none",
-        borderRadius: "6px",
-        padding: "8px 4px",
-        cursor: disabled ? "not-allowed" : "pointer",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "4px",
-        flex: 1,
-        opacity: disabled ? 0.4 : 1,
-        transform: pressed ? "scale(0.92)" : "scale(1)",
-        transition: "transform 0.1s, opacity 0.2s",
-        boxShadow: disabled ? "none" : `0 2px 8px ${color}40`,
+        background: disabled ? "#2a2340" : color,
+        border: "none", borderRadius: "6px", padding: "8px 4px", cursor: disabled ? "not-allowed" : "pointer",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", flex: 1,
+        opacity: disabled ? 0.4 : 1, transform: pressed ? "scale(0.92)" : "scale(1)",
+        transition: "transform 0.1s, opacity 0.2s", boxShadow: disabled ? "none" : `0 2px 8px ${color}40`,
       }}
     >
       <span style={{ fontSize: "16px" }}>{icon}</span>
@@ -211,43 +223,53 @@ function ActionButton({ label, icon, color, onClick, disabled }: { label: string
   );
 }
 
+function BetaButton({ label, icon, color, onClick, disabled }: { label: string; icon: string; color: string; onClick: () => void; disabled?: boolean }) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <button
+      onClick={() => { if (!disabled) { setPressed(true); onClick(); setTimeout(() => setPressed(false), 150); } }}
+      disabled={disabled}
+      style={{
+        background: disabled ? "rgba(100,100,100,0.2)" : `${color}22`,
+        border: `1px solid ${disabled ? "transparent" : color}44`,
+        borderRadius: "8px", padding: "10px 6px", cursor: disabled ? "not-allowed" : "pointer",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: "5px", flex: 1,
+        opacity: disabled ? 0.35 : 1, transform: pressed ? "scale(0.92)" : "scale(1)",
+        transition: "transform 0.1s, opacity 0.2s, background 0.2s",
+      }}
+    >
+      <span style={{ fontSize: "20px" }}>{icon}</span>
+      <span style={{ fontSize: "7px", fontFamily: "'Press Start 2P', monospace", color, textTransform: "uppercase", letterSpacing: "0.3px" }}>{label}</span>
+    </button>
+  );
+}
+
 function ColorPicker({ selected, onSelect }: { selected: number; onSelect: (i: number) => void }) {
   return (
     <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
       {CAT_PALETTES.map((p, i) => (
-        <button
-          key={p.label}
-          title={p.label}
-          onClick={() => onSelect(i)}
-          style={{
-            width: "16px",
-            height: "16px",
-            borderRadius: "50%",
-            background: p.swatch,
+        <button key={p.label} title={p.label} onClick={() => onSelect(i)}
+          style={{ width: "16px", height: "16px", borderRadius: "50%", background: p.swatch,
             border: selected === i ? "2px solid #ffd43b" : "2px solid transparent",
-            cursor: "pointer",
-            padding: 0,
-            boxShadow: selected === i ? "0 0 6px #ffd43b80" : "none",
-            transition: "border 0.15s, box-shadow 0.15s",
-            outline: "none",
-          }}
-        />
+            cursor: "pointer", padding: 0, boxShadow: selected === i ? "0 0 6px #ffd43b80" : "none",
+            transition: "border 0.15s, box-shadow 0.15s", outline: "none" }} />
       ))}
     </div>
   );
 }
 
 function Mfe1() {
-  const [stats, setStats] = useState<Stats>({ hunger: 70, happiness: 60, energy: 80 });
+  const [stats, setStats] = useState<Stats>({ hunger: 70, happiness: 60, energy: 80, hygiene: 75, intelligence: 30 });
   const [mood, setMood] = useState<Mood>("neutral");
   const [frame, setFrame] = useState(0);
   const [action, setAction] = useState<string | null>(null);
   const [age, setAge] = useState(0);
   const [paletteIdx, setPaletteIdx] = useState(0);
   const [isNight, setIsNight] = useState(false);
-  const [name] = useState("Pixel");
+  const [catName] = useState("Pixel");
+  const [betaLog, setBetaLog] = useState<string[]>([]);
   const actionTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const doActionRef = useRef<(type: "feed" | "play" | "sleep") => void>(() => {});
+  const doActionRef = useRef<(type: string) => void>(() => {});
   const colors = getColors(CAT_PALETTES[paletteIdx], isNight);
 
   useEffect(() => {
@@ -261,6 +283,8 @@ function Mfe1() {
         hunger: Math.max(0, s.hunger - 0.4),
         happiness: Math.max(0, s.happiness - 0.25),
         energy: Math.max(0, s.energy - 0.15),
+        hygiene: Math.max(0, s.hygiene - 0.2),
+        intelligence: Math.max(0, s.intelligence - 0.1),
       }));
       setAge((a) => a + 1);
     }, 3000);
@@ -275,40 +299,54 @@ function Mfe1() {
     else setMood("neutral");
   }, [stats, action]);
 
-  const doAction = useCallback((type: "feed" | "play" | "sleep") => {
+  const doAction = useCallback((type: string) => {
     if (actionTimeout.current) clearTimeout(actionTimeout.current);
 
-    if (type === "feed") {
-      setMood("eating");
-      setAction("Feeding...");
-      setStats((s) => ({ ...s, hunger: Math.min(100, s.hunger + 25) }));
-    } else if (type === "play") {
-      setMood("playing");
-      setAction("Playing!");
-      setStats((s) => ({
-        ...s,
-        happiness: Math.min(100, s.happiness + 20),
-        energy: Math.max(0, s.energy - 10),
-      }));
-    } else {
-      setMood("sleeping");
-      setAction("Sleeping...");
-      setStats((s) => ({ ...s, energy: Math.min(100, s.energy + 30) }));
+    switch (type) {
+      case "feed":
+        setMood("eating"); setAction("Eating tuna...");
+        setStats((s) => ({ ...s, hunger: Math.min(100, s.hunger + 25) }));
+        break;
+      case "play":
+        setMood("playing"); setAction("Chasing yarn!");
+        setStats((s) => ({ ...s, happiness: Math.min(100, s.happiness + 20), energy: Math.max(0, s.energy - 10) }));
+        break;
+      case "sleep":
+        setMood("sleeping"); setAction("Purring... zzz");
+        setStats((s) => ({ ...s, energy: Math.min(100, s.energy + 30) }));
+        break;
+      case "bathe":
+        setMood("bathing"); setAction("Licking paws...");
+        setStats((s) => ({ ...s, hygiene: Math.min(100, s.hygiene + 30), happiness: Math.min(100, s.happiness + 5) }));
+        setBetaLog((l) => [`🛁 ${catName} took a bath`, ...l].slice(0, 5));
+        break;
+      case "study":
+        setMood("studying"); setAction("Reading cat-lore...");
+        setStats((s) => ({ ...s, intelligence: Math.min(100, s.intelligence + 20), energy: Math.max(0, s.energy - 5) }));
+        setBetaLog((l) => [`📖 ${catName} studied`, ...l].slice(0, 5));
+        break;
+      case "exercise":
+        setMood("exercising"); setAction("Climbing cat tree!");
+        setStats((s) => ({ ...s, energy: Math.max(0, s.energy - 15), happiness: Math.min(100, s.happiness + 10), hunger: Math.max(0, s.hunger - 10) }));
+        setBetaLog((l) => [`🏋️ ${catName} exercised`, ...l].slice(0, 5));
+        break;
+      case "meditate":
+        setMood("meditating"); setAction("Inner peace...");
+        setStats((s) => ({ ...s, happiness: Math.min(100, s.happiness + 15), energy: Math.min(100, s.energy + 10), intelligence: Math.min(100, s.intelligence + 5) }));
+        setBetaLog((l) => [`🧘 ${catName} meditated`, ...l].slice(0, 5));
+        break;
+      default: return;
     }
 
-    actionTimeout.current = setTimeout(() => {
-      setAction(null);
-    }, 2000);
-  }, []);
+    actionTimeout.current = setTimeout(() => setAction(null), 2000);
+  }, [catName]);
 
   doActionRef.current = doAction;
 
   useEffect(() => {
     const unsub = on<{ type: string }>("cat:action", (data) => {
       const t = data?.type;
-      if (t === "feed" || t === "play" || t === "sleep") {
-        doActionRef.current(t);
-      }
+      if (t) doActionRef.current(t);
     });
     return unsub;
   }, []);
@@ -320,182 +358,147 @@ function Mfe1() {
     return unsub;
   }, []);
 
-  const overallHealth = Math.round((stats.hunger + stats.happiness + stats.energy) / 3);
+  const overallHealth = Math.round((stats.hunger + stats.happiness + stats.energy + stats.hygiene + stats.intelligence) / 5);
+  const catLevel = Math.floor(age / 100) + 1;
 
   return (
     <div style={{
-      background: colors.bg,
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontFamily: "'Press Start 2P', monospace, system-ui",
-      padding: "16px",
-      transition: "background 0.8s ease",
-      position: "relative",
+      background: colors.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+      fontFamily: "'Press Start 2P', monospace, system-ui", padding: "16px", transition: "background 0.8s ease", position: "relative",
     }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 @keyframes sky-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @keyframes twinkle { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+@keyframes pulse-glow { 0%,100% { box-shadow: 0 0 4px currentColor; } 50% { box-shadow: 0 0 12px currentColor; } }
 `}</style>
 
-      {/* Sky indicator */}
-      <div style={{
-        position: "absolute", top: "12px", right: "16px",
-        fontSize: "24px",
+      <div style={{ position: "absolute", top: "12px", right: "16px", fontSize: "24px",
         animation: "sky-float 3s ease-in-out infinite",
-        filter: isNight ? "drop-shadow(0 0 8px #e8e0ff80)" : "drop-shadow(0 0 10px #ffd43b80)",
-        transition: "filter 0.8s ease",
-      }}>
+        filter: isNight ? "drop-shadow(0 0 8px #e8e0ff80)" : "drop-shadow(0 0 10px #ffd43b80)" }}>
         {isNight ? "🌙" : "☀️"}
       </div>
 
       {isNight && (
         <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
           {Array.from({ length: 20 }).map((_, i) => (
-            <span key={i} style={{
-              position: "absolute",
-              left: `${(i * 37 + 13) % 100}%`,
-              top: `${(i * 23 + 7) % 80}%`,
-              fontSize: `${3 + (i % 3) * 2}px`,
-              color: "#ffd43b",
-              animation: `twinkle ${1.5 + (i % 3) * 0.7}s ease-in-out ${(i % 5) * 0.3}s infinite`,
-            }}>✦</span>
+            <span key={i} style={{ position: "absolute", left: `${(i * 37 + 13) % 100}%`, top: `${(i * 23 + 7) % 80}%`,
+              fontSize: `${3 + (i % 3) * 2}px`, color: "#ffd43b",
+              animation: `twinkle ${1.5 + (i % 3) * 0.7}s ease-in-out ${(i % 5) * 0.3}s infinite` }}>✦</span>
           ))}
         </div>
       )}
 
-      <div style={{
-        width: "320px",
-        background: colors.screen,
-        borderRadius: "16px",
-        border: `3px solid ${colors.screenBorder}`,
-        overflow: "hidden",
-        boxShadow: `0 0 30px ${colors.screenBorder}30, 0 8px 32px rgba(0,0,0,0.4)`,
-      }}>
-        {/* Header */}
+      <div style={{ width: "340px", display: "flex", flexDirection: "column", gap: "12px" }}>
+        {/* Main Tamagotchi */}
         <div style={{
-          background: `linear-gradient(135deg, ${colors.screenBorder}, ${colors.screen})`,
-          padding: "10px 14px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          borderBottom: `1px solid ${colors.screenBorder}`,
+          background: colors.screen, borderRadius: "16px", border: `3px solid ${colors.screenBorder}`,
+          overflow: "hidden", boxShadow: `0 0 30px ${colors.screenBorder}30, 0 8px 32px rgba(0,0,0,0.4)`,
         }}>
-          <div>
-            <div style={{ fontSize: "10px", color: colors.text, letterSpacing: "1px" }}>
-              ◆ {name}
+          {/* Header */}
+          <div style={{
+            background: `linear-gradient(135deg, ${colors.screenBorder}, ${colors.screen})`,
+            padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center",
+            borderBottom: `1px solid ${colors.screenBorder}`,
+          }}>
+            <div>
+              <div style={{ fontSize: "10px", color: colors.text, letterSpacing: "1px" }}>🐱 {catName}</div>
+              <div style={{ fontSize: "7px", color: colors.textDim, marginTop: "3px" }}>
+                Lv.{catLevel} · Age {Math.floor(age / 20)}d · HP {overallHealth}%
+              </div>
             </div>
-            <div style={{ fontSize: "7px", color: colors.textDim, marginTop: "3px" }}>
-              Age: {Math.floor(age / 20)}d · HP: {overallHealth}%
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <ColorPicker selected={paletteIdx} onSelect={setPaletteIdx} />
+              <div style={{
+                fontSize: "7px",
+                color: overallHealth > 60 ? colors.barEnergy : overallHealth > 30 ? colors.barHappy : colors.barHunger,
+                background: colors.barBg, padding: "3px 8px", borderRadius: "4px", border: `1px solid ${colors.screenBorder}`,
+              }}>
+                {overallHealth > 60 ? "◉ GOOD" : overallHealth > 30 ? "◎ OK" : "◌ LOW"}
+              </div>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <ColorPicker selected={paletteIdx} onSelect={setPaletteIdx} />
-            <div style={{
-              fontSize: "7px",
-              color: overallHealth > 60 ? colors.barEnergy : overallHealth > 30 ? colors.barHappy : colors.barHunger,
-              background: colors.barBg,
-              padding: "3px 8px",
-              borderRadius: "4px",
-              border: `1px solid ${colors.screenBorder}`,
-            }}>
-              {overallHealth > 60 ? "◉ GOOD" : overallHealth > 30 ? "◎ OK" : "◌ LOW"}
-            </div>
+
+          {/* Cat viewport */}
+          <div style={{
+            height: "140px", display: "flex", alignItems: "center", justifyContent: "center",
+            background: `radial-gradient(ellipse at center, ${colors.screenBorder}15 0%, transparent 70%)`,
+            position: "relative", overflow: "hidden",
+          }}>
+            <div style={{ position: "absolute", inset: 0, background: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px)", pointerEvents: "none" }} />
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "20px", background: `linear-gradient(0deg, ${colors.screenBorder}30, transparent)` }} />
+            <PixelCat mood={mood} frame={frame} colors={colors} />
+            {action && (
+              <div style={{
+                position: "absolute", top: "10px", left: "50%", transform: "translateX(-50%)",
+                fontSize: "8px", color: colors.stars, background: `${colors.barBg}cc`,
+                padding: "4px 10px", borderRadius: "4px", border: `1px solid ${colors.screenBorder}`, letterSpacing: "0.5px",
+              }}>{action}</div>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: "5px",
+            borderTop: `1px solid ${colors.screenBorder}`, borderBottom: `1px solid ${colors.screenBorder}` }}>
+            <StatBar label="Food" value={stats.hunger} color={colors.barHunger} icon="🐟" colors={colors} />
+            <StatBar label="Joy" value={stats.happiness} color={colors.barHappy} icon="⭐" colors={colors} />
+            <StatBar label="Nap" value={stats.energy} color={colors.barEnergy} icon="⚡" colors={colors} />
+          </div>
+
+          {/* Core actions */}
+          <div style={{ padding: "12px 14px", display: "flex", gap: "8px" }}>
+            <ActionButton label="Feed" icon="🐟" color={colors.button1} onClick={() => doAction("feed")} disabled={action !== null || stats.hunger >= 100} />
+            <ActionButton label="Play" icon="🧶" color={colors.button2} onClick={() => doAction("play")} disabled={action !== null || stats.energy < 10} />
+            <ActionButton label="Sleep" icon="🌙" color={colors.button3} onClick={() => doAction("sleep")} disabled={action !== null || stats.energy >= 100} />
           </div>
         </div>
 
-        {/* Cat viewport */}
+        {/* Beta Section */}
         <div style={{
-          height: "140px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: `radial-gradient(ellipse at center, ${colors.screenBorder}15 0%, transparent 70%)`,
-          position: "relative",
-          overflow: "hidden",
+          background: colors.betaBg, borderRadius: "16px", border: `2px solid ${colors.betaBorder}`,
+          overflow: "hidden", position: "relative",
         }}>
-          {/* Scanline effect */}
           <div style={{
-            position: "absolute",
-            inset: 0,
-            background: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px)",
-            pointerEvents: "none",
-          }} />
+            padding: "10px 14px", borderBottom: `1px solid ${colors.betaBorder}`,
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "10px", color: colors.text, letterSpacing: "1px", fontFamily: "'Press Start 2P', monospace" }}>
+                🧪 Beta
+              </span>
+              <span style={{
+                fontSize: "6px", fontFamily: "'Press Start 2P', monospace",
+                color: "#a78bfa", background: "#a78bfa22", padding: "2px 6px", borderRadius: "4px",
+                border: "1px solid #a78bfa44",
+              }}>NEW</span>
+            </div>
+            <div style={{ fontSize: "7px", color: colors.textDim, fontFamily: "'Press Start 2P', monospace" }}>
+              Cat life extras
+            </div>
+          </div>
 
-          {/* Ground */}
-          <div style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "20px",
-            background: `linear-gradient(0deg, ${colors.screenBorder}30, transparent)`,
-          }} />
+          {/* Beta stats */}
+          <div style={{ padding: "8px 14px", display: "flex", flexDirection: "column", gap: "5px", borderBottom: `1px solid ${colors.betaBorder}` }}>
+            <StatBar label="Bath" value={stats.hygiene} color={colors.barHygiene} icon="🫧" colors={colors} />
+            <StatBar label="IQ" value={stats.intelligence} color={colors.barIntel} icon="🧠" colors={colors} />
+          </div>
 
-          <PixelCat mood={mood} frame={frame} colors={colors} />
+          {/* Beta actions */}
+          <div style={{ padding: "12px 14px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px" }}>
+            <BetaButton label="Bathe" icon="🛁" color="#5b9bd5" onClick={() => doAction("bathe")} disabled={action !== null || stats.hygiene >= 100} />
+            <BetaButton label="Study" icon="📚" color="#b07ab1" onClick={() => doAction("study")} disabled={action !== null || stats.energy < 5} />
+            <BetaButton label="Train" icon="🏋️" color="#e07b39" onClick={() => doAction("exercise")} disabled={action !== null || stats.energy < 15} />
+            <BetaButton label="Zen" icon="🧘" color="#51cf66" onClick={() => doAction("meditate")} disabled={action !== null} />
+          </div>
 
-          {/* Action text */}
-          {action && (
-            <div style={{
-              position: "absolute",
-              top: "10px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              fontSize: "8px",
-              color: colors.stars,
-              background: `${colors.barBg}cc`,
-              padding: "4px 10px",
-              borderRadius: "4px",
-              border: `1px solid ${colors.screenBorder}`,
-              letterSpacing: "0.5px",
-            }}>
-              {action}
+          {/* Activity log */}
+          {betaLog.length > 0 && (
+            <div style={{ padding: "8px 14px 12px", borderTop: `1px solid ${colors.betaBorder}` }}>
+              <div style={{ fontSize: "7px", fontFamily: "'Press Start 2P', monospace", color: colors.textDim, marginBottom: "6px" }}>ACTIVITY LOG</div>
+              {betaLog.map((entry, i) => (
+                <div key={i} style={{ fontSize: "8px", fontFamily: "monospace", color: colors.text, opacity: 1 - i * 0.15, padding: "2px 0" }}>{entry}</div>
+              ))}
             </div>
           )}
-        </div>
-
-        {/* Stats */}
-        <div style={{
-          padding: "10px 14px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "6px",
-          borderTop: `1px solid ${colors.screenBorder}`,
-          borderBottom: `1px solid ${colors.screenBorder}`,
-        }}>
-          <StatBar label="Food" value={stats.hunger} color={colors.barHunger} icon="🍖" />
-          <StatBar label="Joy" value={stats.happiness} color={colors.barHappy} icon="⭐" />
-          <StatBar label="Nap" value={stats.energy} color={colors.barEnergy} icon="⚡" />
-        </div>
-
-        {/* Action buttons */}
-        <div style={{
-          padding: "12px 14px",
-          display: "flex",
-          gap: "8px",
-        }}>
-          <ActionButton
-            label="Feed"
-            icon="🐟"
-            color={colors.button1}
-            onClick={() => doAction("feed")}
-            disabled={action !== null || stats.hunger >= 100}
-          />
-          <ActionButton
-            label="Play"
-            icon="🧶"
-            color={colors.button2}
-            onClick={() => doAction("play")}
-            disabled={action !== null || stats.energy < 10}
-          />
-          <ActionButton
-            label="Sleep"
-            icon="🌙"
-            color={colors.button3}
-            onClick={() => doAction("sleep")}
-            disabled={action !== null || stats.energy >= 100}
-          />
         </div>
       </div>
     </div>

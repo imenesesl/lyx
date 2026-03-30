@@ -118,7 +118,8 @@ router.get("/:accountId/:slug/layout", async (req, res) => {
 
     const assignedSlots = config.assignments.map((a) => a.slotId);
     const canarySlots = (config.canaryRules ?? []).map((r) => r.slotId);
-    res.json({ ...config.layoutSnapshot, assignedSlots, canarySlots });
+    const snapshot = JSON.parse(JSON.stringify(config.layoutSnapshot));
+    res.json({ ...snapshot, assignedSlots, canarySlots });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }
