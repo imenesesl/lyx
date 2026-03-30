@@ -102,3 +102,5 @@ New features follow the pipeline defined in `.cursor/rules/product-workflow.mdc`
 | `lyx-shell-expert` | Shell, layouts, Module Federation, SSR |
 | `lyx-admin-api-expert` | API routes, models, auth, storage, publish flow |
 | `lyx-infra-expert` | Docker, Nginx, AWS, CI/CD pipeline |
+| `lyx-testing-expert` | Playwright E2E, k6 performance, test architecture, coverage |
+| `lyx-qa-regression` | Full regression checklist, known bug patterns, mandatory gate |

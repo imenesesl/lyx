@@ -13,6 +13,15 @@
     "dev": "nx run-many -t dev",
     "lint": "nx run-many -t lint",
     "test": "nx run-many -t test",
+    "test:e2e": "playwright test",
+    "test:e2e:admin": "playwright test --project=admin-chromium",
+    "test:e2e:shell": "playwright test --project=shell-chromium",
+    "test:e2e:report": "playwright show-report",
+    "test:k6:api": "bash tests/k6/run-k6.sh api-load",
+    "test:k6:ssr": "bash tests/k6/run-k6.sh ssr-load",
+    "test:k6:concurrent": "bash tests/k6/run-k6.sh concurrent-users",
+    "test:k6:all": "bash tests/k6/run-k6.sh all",
+    "test:all": "pnpm test && pnpm test:e2e",
     "deploy:aws": "bash scripts/deploy-aws.sh deploy",
     "deploy:aws:update": "bash scripts/deploy-aws.sh update",
     "deploy:aws:status": "bash scripts/deploy-aws.sh status",
@@ -20,16 +29,22 @@
   },
   "nx": {},
   "pnpm": {
-    "onlyBuiltDependencies": ["nx", "mongodb-memory-server", "esbuild"]
+    "onlyBuiltDependencies": [
+      "nx",
+      "mongodb-memory-server",
+      "esbuild"
+    ]
   },
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=9.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "k6": "^0.0.0",
     "nx": "^22.6.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

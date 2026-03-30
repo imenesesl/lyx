@@ -33,6 +33,8 @@ The regression includes:
 - Trace runtime data flow end-to-end
 - Check .gitignore for build artifacts
 - Verify documentation completeness
+- **Run Playwright E2E tests** (`pnpm test:e2e`) — ALL tests MUST pass
+- **Run k6 performance tests** before production deploys (`pnpm test:k6:all`)
 
 If ANY check fails, fix it before committing. Re-run affected checks after fixing.
 
@@ -53,6 +55,7 @@ If ANY check fails, fix it before committing. Re-run affected checks after fixin
 | Product Owner | `.cursor/skills/lyx-product-owner/SKILL.md` | `docs/backlog.md`, `docs/competitive-analysis.md` |
 | Project Manager | `.cursor/skills/lyx-project-manager/SKILL.md` | `docs/workplan.md` |
 | QA Regression | `.cursor/skills/lyx-qa-regression/SKILL.md` | `docs/errors.md` |
+| Testing Expert | `.cursor/skills/lyx-testing-expert/SKILL.md` | `tests/e2e/`, `tests/k6/` |
 | Architect | (inline in `docs/roles.md`) | `docs/architecture.md` |
 | Staff Engineer | (inline in `docs/roles.md`) | `.cursor/rules/` |
 | Developer | (inline in `docs/roles.md`) | `docs/features.md` |

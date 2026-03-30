@@ -412,12 +412,48 @@ lyx deploy --canary 50 --app <appId>   # deploy and set 50% canary
 | Job | Trigger | Purpose |
 |-----|---------|---------|
 | build-and-test | All pushes/PRs | Build, lint, test framework packages |
+| e2e-admin | PRs / manual dispatch | Playwright E2E tests for Admin UI |
 | detect-changes | Push to main + dispatch | Determine what to deploy |
 | setup-infra | Any deploy needed | Create ECR, IAM, S3 if missing |
 | deploy-admin-api | admin-api files changed | Build, push, create/update service |
 | deploy-admin-ui | admin-ui files changed | Build, push, create/update service |
 | deploy-ssr | ssr/shell files changed | Build, push, create/update service |
 | show-urls | After deploy | Display service URLs |
+
+### E2E Testing (Playwright)
+
+| Spec File | Scope |
+|-----------|-------|
+| `tests/e2e/admin/auth.spec.ts` | Login, register, session, token expiry |
+| `tests/e2e/admin/apps.spec.ts` | App CRUD, detail, publish, preview |
+| `tests/e2e/admin/mfes.spec.ts` | MFE list, detail, archive, delete |
+| `tests/e2e/admin/layouts.spec.ts` | Built-in templates, layout builder, edit |
+| `tests/e2e/admin/settings.spec.ts` | Alias, shell URL, logout |
+| `tests/e2e/admin/health.spec.ts` | Health dashboard, metrics, logs filters |
+| `tests/e2e/admin/canary.spec.ts` | Canary create, promote, rollback |
+| `tests/e2e/admin/navigation.spec.ts` | Sidebar, page titles, refresh, layout |
+
+Fixtures (`tests/e2e/fixtures/test-fixtures.ts`): `adminPage`, `apiContext`, `testApp`, `testMfe`.
+
+### Shell E2E Testing (Playwright)
+
+| Spec File | Scope |
+|-----------|-------|
+| `tests/e2e/shell/ssr.spec.ts` | SSR rendering, HTML structure, __LYX_INITIAL__, skeletons, cache headers, error pages |
+| `tests/e2e/shell/mfe-loading.spec.ts` | MFE hydration, slot loading, error boundaries, skeleton lifecycle |
+| `tests/e2e/shell/api-proxy.spec.ts` | Runtime API proxy (/api/runtime/*), storage proxy (/storage/*), health endpoint |
+
+Shell tests use standard `@playwright/test` (no fixtures). Configured via `shell-chromium` project in `playwright.config.ts` with `baseURL` = `SHELL_URL` (default `http://localhost:4002`). Test data: accountId `iml`, app slug `example-1`.
+
+### k6 Performance Testing
+
+| Scenario | File | Description |
+|----------|------|-------------|
+| `api-load` | `tests/k6/scenarios/api-load.js` | Runtime API load test — 50 VUs, p95 < 500ms, < 1% errors |
+| `ssr-load` | `tests/k6/scenarios/ssr-load.js` | SSR page rendering — 20 VUs, p95 < 2000ms, < 5% errors |
+| `concurrent-users` | `tests/k6/scenarios/concurrent-users.js` | Multi-scenario user journeys (admin + shell) |
+
+Runner: `tests/k6/run-k6.sh <scenario>` — accepts `api-load`, `ssr-load`, `concurrent-users`, or `all`. Configurable via `BASE_URL`, `ADMIN_URL`, `SHELL_URL` env vars.
 
 ### Scripts
 

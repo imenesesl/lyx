@@ -55,3 +55,6 @@ refactor: code restructuring
 2. **CLI commands** → `which lyx` — if not found, rebuild and link
 3. **Directory renames** → `pnpm install --no-frozen-lockfile` + commit lockfile
 4. **After fixing anything** → update `docs/errors.md` with the resolution
+5. **Before committing** → Run `pnpm test` (unit) + `pnpm test:e2e` (E2E) — ALL MUST PASS
+6. **New feature** → Add Playwright E2E tests in `tests/e2e/admin/` or `tests/e2e/shell/`
+7. **Performance-sensitive change** → Run `pnpm test:k6:all` before deploying

@@ -11,3 +11,7 @@ dist-ssr
 vite.preview.config.ts
 infra/.secrets
 .lyx-aws
+tests/e2e/.auth/*.json
+playwright-report/
+test-results/
+tests/k6/results/

@@ -66,6 +66,24 @@ jobs:
       - name: Test shell
         run: pnpm nx run @lyx/shell:test
 
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run E2E tests (Admin UI + Shell)
+        run: pnpm test:e2e
+        env:
+          ADMIN_URL: ${{ vars.ADMIN_URL || '' }}
+          SHELL_URL: ${{ vars.SHELL_URL || '' }}
+        if: vars.ADMIN_URL != '' && vars.SHELL_URL != ''
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
   detect-changes:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: [build-and-test]

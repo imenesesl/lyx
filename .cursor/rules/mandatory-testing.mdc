@@ -1,0 +1,104 @@
+---
+description: "Mandatory testing gate — ALL changes MUST pass tests before commit"
+alwaysApply: true
+---
+
+# Mandatory Testing Gate
+
+**CRITICAL**: Every code change MUST pass ALL applicable tests before being committed or pushed. This is non-negotiable.
+
+## Before ANY Commit
+
+Run the following checks in order. If ANY step fails, FIX the issue before committing:
+
+1. **TypeScript compilation**: `pnpm nx run-many -t lint --projects='@lyx/types,@lyx/sdk,@lyx/vite-plugin,@lyx/cli,@lyx/shell'`
+2. **Unit tests**: `pnpm test` (runs Vitest for admin-api and shell)
+3. **Build verification**: `pnpm nx run @lyx/shell:build --skip-nx-cache`
+4. **E2E tests** (when Admin UI or Shell or API was modified):
+   - Admin UI changes → `pnpm test:e2e:admin`
+   - Shell/SSR changes → `pnpm test:e2e:shell`
+   - Both → `pnpm test:e2e`
+
+## When Writing New Features
+
+For EVERY new feature or bug fix:
+
+1. Write Playwright E2E tests covering:
+   - Happy path (the feature works correctly)
+   - Error cases (invalid input, API failures, edge cases)
+   - Empty states (no data)
+   - Boundary conditions
+2. Add tests to the appropriate spec file in `tests/e2e/admin/` or `tests/e2e/shell/`
+3. Use Page Objects from `tests/e2e/pages/` — create new ones if needed
+4. Use test fixtures from `tests/e2e/fixtures/test-fixtures.ts`
+
+## Test File Organization
+
+```
+tests/
+├── e2e/
+│   ├── admin/           # Admin UI E2E specs
+│   │   ├── auth.spec.ts
+│   │   ├── apps.spec.ts
+│   │   ├── mfes.spec.ts
+│   │   ├── layouts.spec.ts
+│   │   ├── settings.spec.ts
+│   │   ├── health.spec.ts
+│   │   ├── canary.spec.ts
+│   │   └── navigation.spec.ts
+│   ├── shell/           # Shell/SSR E2E specs
+│   │   ├── ssr.spec.ts
+│   │   ├── mfe-loading.spec.ts
+│   │   └── api-proxy.spec.ts
+│   ├── fixtures/        # Shared test fixtures
+│   ├── pages/           # Page Object Models
+│   └── .auth/           # Auth state (gitignored)
+├── k6/
+│   ├── scenarios/       # k6 load test scripts
+│   └── run-k6.sh        # Runner script
+```
+
+## Test Conventions
+
+- Use `test.describe` for logical grouping
+- Use semantic locators: `getByRole`, `getByLabel`, `getByText`, `getByTestId`
+- Each test must be independent — no shared state between tests
+- Clean up test data in `afterEach` or use auto-cleanup fixtures
+- Mock external APIs with `page.route()` when needed
+- Name tests descriptively: "creates app with selected layout" not "test1"
+
+## Performance Tests (k6)
+
+Run before deploying to production:
+- `pnpm test:k6:api` — API endpoint load testing
+- `pnpm test:k6:ssr` — SSR rendering performance
+- `pnpm test:k6:concurrent` — Multi-user simulation
+
+Thresholds:
+- API endpoints: p95 < 500ms, error rate < 1%
+- SSR rendering: p95 < 2000ms, error rate < 5%
+
+## Local Testing Workflow
+
+Before pushing any change:
+```bash
+# 1. Unit tests
+pnpm test
+
+# 2. Build verification
+pnpm nx run @lyx/shell:build --skip-nx-cache
+
+# 3. Start local services (if testing E2E)
+# Admin API + Admin UI + SSR must be running
+
+# 4. E2E tests
+ADMIN_URL=http://localhost:4001 SHELL_URL=http://localhost:4002 pnpm test:e2e
+```
+
+## What Happens If Tests Fail
+
+- **DO NOT** push code with failing tests
+- **DO NOT** skip tests with `test.skip` unless there's a documented reason
+- **DO NOT** disable test checks in CI
+- Fix the failing test OR fix the code that broke it
+- Document any new error patterns in `docs/errors.md`

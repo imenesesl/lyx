@@ -104,7 +104,46 @@ Trace the full data flow for the feature:
 - Is the README updated if user-facing?
 - Are new CLI commands in the CLI reference table?
 
-### 10. Edge Cases
+### 10. Automated E2E Tests (Playwright)
+
+Run the full Playwright suite against local or deployed services:
+
+```bash
+# Set service URLs
+export ADMIN_URL=http://localhost:4001
+export SHELL_URL=http://localhost:4002
+
+# Run ALL E2E tests
+pnpm test:e2e
+
+# Or run by area
+pnpm test:e2e:admin    # Admin UI tests
+pnpm test:e2e:shell    # Shell/SSR tests
+
+# Debug failures
+npx playwright test --headed --debug
+npx playwright show-report
+```
+
+If ANY E2E test fails, the feature is NOT ready. Fix the issue or update the test if the behavior intentionally changed.
+
+Test specs are in `tests/e2e/admin/` and `tests/e2e/shell/`. Every new feature MUST have corresponding E2E tests added to these specs.
+
+### 11. Performance Tests (k6)
+
+Run k6 load tests before production deployment:
+
+```bash
+pnpm test:k6:api          # API load test (50 VUs)
+pnpm test:k6:ssr          # SSR render performance (20 VUs)
+pnpm test:k6:concurrent   # Multi-user simulation
+```
+
+Thresholds:
+- API p95 < 500ms, error rate < 1%
+- SSR p95 < 2000ms, error rate < 5%
+
+### 12. Edge Cases
 
 - What happens on first deploy (empty database)?
 - What happens with zero data (empty state in UI)?
@@ -188,6 +227,12 @@ These are bugs that have occurred before. ALWAYS check for them:
 6. **Express middleware order** — `express.json()` must be registered before routes. New routes must be mounted after the JSON parser.
 
 7. **S3 access** — SSR uses AWS SDK (authenticated), not public fetch. New storage routes must use `GetObjectCommand`.
+
+8. **Module Federation shared modules** — NEVER add `react` or `react-dom` to the host's build-time `shared` config in `host-plugin.ts`. It causes `$m is not defined` in production builds. React is shared via runtime registration in `MFESlot.tsx` `init()` call instead.
+
+9. **Module Federation multiple React instances** — If host's `shared: {}` is set without runtime registration, MFEs bundle their own React. This causes `useState` null errors. Always pair `shared: {}` in build with `lib: () => React` in runtime init.
+
+10. **Mongoose subdocument spread** — Spreading a Mongoose subdocument (`...config.layoutSnapshot`) doesn't extract nested properties. Use `JSON.parse(JSON.stringify(doc))` before spreading.
 
 ## Critical Rule
 
