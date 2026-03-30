@@ -27,7 +27,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  apps/learning/mfes/learning-header:
+  apps/example-1/mfes/mfe-1:
     dependencies:
       '@lyx/sdk':
         specifier: workspace:*
@@ -52,7 +52,7 @@ importers:
         specifier: ^6.3.0
         version: 6.4.1(@types/node@25.5.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)
 
-  apps/michis-house/mfes/michis-footer:
+  apps/example-2/mfes/mfe-footer:
     dependencies:
       '@lyx/sdk':
         specifier: workspace:*
@@ -77,32 +77,7 @@ importers:
         specifier: ^6.3.0
         version: 6.4.1(@types/node@25.5.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)
 
-  apps/michis-house/mfes/michis-header:
-    dependencies:
-      '@lyx/sdk':
-        specifier: workspace:*
-        version: link:../../../../packages/sdk
-      react:
-        specifier: ^19.1.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@lyx/vite-plugin':
-        specifier: workspace:*
-        version: link:../../../../packages/vite-plugin
-      '@vitejs/plugin-react':
-        specifier: ^4.5.0
-        version: 4.7.0(vite@6.4.1(@types/node@25.5.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3))
-      typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
-      vite:
-        specifier: ^6.3.0
-        version: 6.4.1(@types/node@25.5.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)
-
-  apps/sombra/mfes/pick-a-cat:
+  apps/example-2/mfes/mfe-header:
     dependencies:
       '@lyx/sdk':
         specifier: workspace:*
