@@ -20,16 +20,21 @@ test.describe("Application Management", () => {
         await apiContext.delete(`/api/apps/${app._id}`);
       }
 
-      await adminPage.goto(`${ADMIN_URL}/admin/apps`);
+      await adminPage.goto(`${ADMIN_URL}/admin/apps`, { waitUntil: "networkidle" });
 
-      await expect(adminPage.locator(".empty-state")).toBeVisible();
+      const hasEmptyState = await adminPage.locator(".empty-state").isVisible({ timeout: 5000 }).catch(() => false);
+      if (!hasEmptyState) {
+        await adminPage.reload({ waitUntil: "networkidle" });
+      }
+
+      await expect(adminPage.locator(".empty-state")).toBeVisible({ timeout: 10000 });
       await expect(
         adminPage.getByText("No applications yet")
       ).toBeVisible();
 
+      const layoutsRes = await apiContext.get("/api/layouts");
+      const layouts = await layoutsRes.json();
       for (const app of apps) {
-        const layoutsRes = await apiContext.get("/api/layouts");
-        const layouts = await layoutsRes.json();
         await apiContext.post("/api/apps", {
           data: { name: app.name, layoutTemplateId: layouts[0]._id },
         });

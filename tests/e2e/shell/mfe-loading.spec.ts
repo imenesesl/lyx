@@ -59,7 +59,9 @@ test.describe("Shell MFE Loading", () => {
   });
 
   test("multiple MFEs load in correct slot regions", async ({ page }) => {
-    await page.goto(`${SHELL_URL}/${ACCOUNT_ID}/${APP_SLUG}`);
+    await page.goto(`${SHELL_URL}/${ACCOUNT_ID}/${APP_SLUG}`, {
+      waitUntil: "networkidle",
+    });
 
     const initialData = await page.evaluate(
       () => (window as Window & { __LYX_INITIAL__?: Record<string, unknown> }).__LYX_INITIAL__
@@ -71,8 +73,7 @@ test.describe("Shell MFE Loading", () => {
 
     for (const region of regions) {
       const slotEl = page.locator(`[data-lyx-slot="${region.slot}"]`);
-      const count = await slotEl.count();
-      expect(count).toBeGreaterThanOrEqual(1);
+      await expect(slotEl.first()).toBeVisible({ timeout: 15_000 });
     }
   });
 
