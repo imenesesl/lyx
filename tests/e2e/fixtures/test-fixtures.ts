@@ -2,7 +2,7 @@ import { test as base, expect, type APIRequestContext, type Page } from "@playwr
 import fs from "node:fs";
 import path from "node:path";
 
-const API_BASE = `${process.env.ADMIN_URL ?? "http://localhost:4001"}/api`;
+const ADMIN_URL = process.env.ADMIN_URL ?? "http://localhost:4001";
 const AUTH_FILE = path.join(__dirname, "..", ".auth", "admin.json");
 
 function readToken(): string {
@@ -44,7 +44,7 @@ export const test = base.extend<Fixtures>({
   apiContext: async ({ playwright }, use) => {
     const token = readToken();
     const ctx = await playwright.request.newContext({
-      baseURL: API_BASE,
+      baseURL: ADMIN_URL,
       extraHTTPHeaders: { Authorization: `Bearer ${token}` },
     });
     await use(ctx);
@@ -52,13 +52,13 @@ export const test = base.extend<Fixtures>({
   },
 
   testApp: async ({ apiContext }, use) => {
-    const layoutsRes = await apiContext.get("/layouts");
+    const layoutsRes = await apiContext.get("/api/layouts");
     expect(layoutsRes.ok()).toBe(true);
     const layouts = await layoutsRes.json();
     expect(layouts.length).toBeGreaterThan(0);
 
     const name = `e2e-app-${Date.now()}`;
-    const createRes = await apiContext.post("/apps", {
+    const createRes = await apiContext.post("/api/apps", {
       data: { name, layoutTemplateId: layouts[0]._id },
     });
     expect(createRes.ok()).toBe(true);
@@ -66,12 +66,12 @@ export const test = base.extend<Fixtures>({
 
     await use(app);
 
-    await apiContext.delete(`/apps/${app._id}`);
+    await apiContext.delete(`/api/apps/${app._id}`);
   },
 
   testMfe: async ({ apiContext }, use) => {
     const name = `e2e-mfe-${Date.now()}`;
-    const createRes = await apiContext.post("/mfes", {
+    const createRes = await apiContext.post("/api/mfes", {
       data: { name },
     });
     expect(createRes.ok()).toBe(true);
@@ -79,7 +79,7 @@ export const test = base.extend<Fixtures>({
 
     await use(mfe);
 
-    await apiContext.delete(`/mfes/${mfe._id}`);
+    await apiContext.delete(`/api/mfes/${mfe._id}`);
   },
 });
 

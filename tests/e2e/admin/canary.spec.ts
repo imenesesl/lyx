@@ -18,11 +18,11 @@ test.describe("Canary Deployments", () => {
     let versionIdV2: string;
 
     test.beforeEach(async ({ apiContext }) => {
-      const layoutsRes = await apiContext.get("/layouts");
+      const layoutsRes = await apiContext.get("/api/layouts");
       const layouts = await layoutsRes.json();
       expect(layouts.length).toBeGreaterThan(0);
 
-      const appRes = await apiContext.post("/apps", {
+      const appRes = await apiContext.post("/api/apps", {
         data: {
           name: `e2e-canary-app-${Date.now()}`,
           layoutTemplateId: layouts[0]._id,
@@ -32,18 +32,18 @@ test.describe("Canary Deployments", () => {
       const app = await appRes.json();
       appId = app._id;
 
-      const configRes = await apiContext.get(`/apps/${appId}/config`);
+      const configRes = await apiContext.get(`/api/apps/${appId}/config`);
       const config = await configRes.json();
       slotId = config.layoutSnapshot.regions[0]?.slot ?? "main";
 
-      const mfeRes = await apiContext.post("/mfes", {
+      const mfeRes = await apiContext.post("/api/mfes", {
         data: { name: `e2e-canary-mfe-${Date.now()}` },
       });
       expect(mfeRes.ok()).toBe(true);
       const mfe = await mfeRes.json();
       mfeId = mfe._id;
 
-      const v1Res = await apiContext.post(`/mfes/${mfeId}/versions`, {
+      const v1Res = await apiContext.post(`/api/mfes/${mfeId}/versions`, {
         data: {
           slot: slotId,
           remoteEntryUrl: "http://localhost:9999/remoteEntry.js",
@@ -55,7 +55,7 @@ test.describe("Canary Deployments", () => {
         versionIdV1 = v1._id;
       }
 
-      const v2Res = await apiContext.post(`/mfes/${mfeId}/versions`, {
+      const v2Res = await apiContext.post(`/api/mfes/${mfeId}/versions`, {
         data: {
           slot: slotId,
           remoteEntryUrl: "http://localhost:9999/remoteEntry-v2.js",
@@ -68,7 +68,7 @@ test.describe("Canary Deployments", () => {
       }
 
       if (versionIdV1) {
-        await apiContext.put(`/apps/${appId}/config`, {
+        await apiContext.put(`/api/apps/${appId}/config`, {
           data: {
             assignments: [
               {
@@ -81,7 +81,7 @@ test.describe("Canary Deployments", () => {
             ],
           },
         });
-        await apiContext.post(`/apps/${appId}/publish`, {
+        await apiContext.post(`/api/apps/${appId}/publish`, {
           data: {
             assignments: [
               {
@@ -99,10 +99,10 @@ test.describe("Canary Deployments", () => {
 
     test.afterEach(async ({ apiContext }) => {
       if (appId) {
-        try { await apiContext.delete(`/apps/${appId}`); } catch {}
+        try { await apiContext.delete(`/api/apps/${appId}`); } catch {}
       }
       if (mfeId) {
-        try { await apiContext.delete(`/mfes/${mfeId}`); } catch {}
+        try { await apiContext.delete(`/api/mfes/${mfeId}`); } catch {}
       }
     });
 
@@ -149,7 +149,7 @@ test.describe("Canary Deployments", () => {
     }) => {
       test.skip(!versionIdV2, "Need 2 MFE versions for canary");
 
-      await apiContext.post(`/apps/${appId}/canary`, {
+      await apiContext.post(`/api/apps/${appId}/canary`, {
         data: { slotId, mfeVersionId: versionIdV2, percentage: 10 },
       });
 
@@ -179,7 +179,7 @@ test.describe("Canary Deployments", () => {
     }) => {
       test.skip(!versionIdV2, "Need 2 MFE versions for canary");
 
-      await apiContext.post(`/apps/${appId}/canary`, {
+      await apiContext.post(`/api/apps/${appId}/canary`, {
         data: { slotId, mfeVersionId: versionIdV2, percentage: 10 },
       });
 

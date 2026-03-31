@@ -47,7 +47,7 @@ test.describe("Settings", () => {
 
     test("duplicate alias shows error", async ({ adminPage, apiContext }) => {
       const otherEmail = `e2e-dup-${Date.now()}@test.com`;
-      const regRes = await apiContext.post("/auth/register", {
+      const regRes = await apiContext.post("/api/auth/register", {
         data: { email: otherEmail, password: "Test1234!", name: "Dup User" },
       });
 
@@ -55,7 +55,7 @@ test.describe("Settings", () => {
         const { token } = await regRes.json();
         const reservedAlias = `reserved-${Date.now()}`.slice(0, 32);
 
-        await apiContext.put("/auth/alias", {
+        await apiContext.put("/api/auth/alias", {
           data: { alias: reservedAlias },
           headers: { Authorization: `Bearer ${token}` },
         });

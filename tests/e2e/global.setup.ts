@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const ADMIN_URL = process.env.ADMIN_URL ?? "http://localhost:4001";
+const SHELL_URL = process.env.SHELL_URL ?? "http://localhost:4002";
 const AUTH_FILE = path.join(__dirname, ".auth", "admin.json");
 
 const TEST_USER = {
@@ -10,6 +11,25 @@ const TEST_USER = {
   password: "Test1234!",
   name: "E2E Tester",
 };
+
+setup("health check", async ({ request }) => {
+  const check = async (name: string, url: string) => {
+    try {
+      const res = await request.get(url, { timeout: 10_000 });
+      if (!res.ok()) {
+        throw new Error(`${name} responded with ${res.status()}`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `${name} is unreachable at ${url} — cannot run E2E tests. ${msg}`
+      );
+    }
+  };
+
+  await check("Admin API", `${ADMIN_URL}/api/health`);
+  await check("Shell", SHELL_URL);
+});
 
 setup("authenticate", async ({ page }) => {
   let token: string;

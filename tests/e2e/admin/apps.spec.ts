@@ -13,11 +13,11 @@ test.describe("Application Management", () => {
     });
 
     test("empty state when no apps exist", async ({ adminPage, apiContext }) => {
-      const res = await apiContext.get("/apps");
+      const res = await apiContext.get("/api/apps");
       const apps = await res.json();
 
       for (const app of apps) {
-        await apiContext.delete(`/apps/${app._id}`);
+        await apiContext.delete(`/api/apps/${app._id}`);
       }
 
       await adminPage.goto(`${ADMIN_URL}/apps`);
@@ -28,9 +28,9 @@ test.describe("Application Management", () => {
       ).toBeVisible();
 
       for (const app of apps) {
-        const layoutsRes = await apiContext.get("/layouts");
+        const layoutsRes = await apiContext.get("/api/layouts");
         const layouts = await layoutsRes.json();
-        await apiContext.post("/apps", {
+        await apiContext.post("/api/apps", {
           data: { name: app.name, layoutTemplateId: layouts[0]._id },
         });
       }
@@ -100,7 +100,7 @@ test.describe("Application Management", () => {
       testMfe,
       apiContext,
     }) => {
-      const versionsRes = await apiContext.get(`/mfes/${testMfe._id}/versions`);
+      const versionsRes = await apiContext.get(`/api/mfes/${testMfe._id}/versions`);
       const versions = await versionsRes.json();
 
       if (versions.length === 0) {
@@ -141,9 +141,9 @@ test.describe("Application Management", () => {
       adminPage,
       apiContext,
     }) => {
-      const layoutsRes = await apiContext.get("/layouts");
+      const layoutsRes = await apiContext.get("/api/layouts");
       const layouts = await layoutsRes.json();
-      const createRes = await apiContext.post("/apps", {
+      const createRes = await apiContext.post("/api/apps", {
         data: { name: `e2e-delete-${Date.now()}`, layoutTemplateId: layouts[0]._id },
       });
       const app = await createRes.json();

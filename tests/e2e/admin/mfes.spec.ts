@@ -12,12 +12,12 @@ test.describe("MFE Management", () => {
     });
 
     test("empty state when no MFEs exist", async ({ adminPage, apiContext }) => {
-      const res = await apiContext.get("/mfes");
+      const res = await apiContext.get("/api/mfes");
       const mfes = await res.json();
 
       for (const mfe of mfes) {
         try {
-          await apiContext.delete(`/mfes/${mfe._id}`);
+          await apiContext.delete(`/api/mfes/${mfe._id}`);
         } catch {
           // MFE may be in use
         }
@@ -33,7 +33,7 @@ test.describe("MFE Management", () => {
       }
 
       for (const mfe of mfes) {
-        await apiContext.post("/mfes", { data: { name: mfe.name } });
+        await apiContext.post("/api/mfes", { data: { name: mfe.name } });
       }
     });
   });
@@ -54,7 +54,7 @@ test.describe("MFE Management", () => {
       testMfe,
       apiContext,
     }) => {
-      const versionsRes = await apiContext.get(`/mfes/${testMfe._id}/versions`);
+      const versionsRes = await apiContext.get(`/api/mfes/${testMfe._id}/versions`);
       const versions = await versionsRes.json();
 
       await adminPage.goto(`${ADMIN_URL}/mfes/${testMfe._id}`);
@@ -89,7 +89,7 @@ test.describe("MFE Management", () => {
       adminPage,
       apiContext,
     }) => {
-      const createRes = await apiContext.post("/mfes", {
+      const createRes = await apiContext.post("/api/mfes", {
         data: { name: `e2e-del-mfe-${Date.now()}` },
       });
       const mfe = await createRes.json();
@@ -110,12 +110,12 @@ test.describe("MFE Management", () => {
       testMfe,
       apiContext,
     }) => {
-      const configRes = await apiContext.get(`/apps/${testApp._id}/config`);
+      const configRes = await apiContext.get(`/api/apps/${testApp._id}/config`);
       const config = await configRes.json();
 
       if (config.layoutSnapshot?.regions?.length > 0) {
         const slot = config.layoutSnapshot.regions[0].slot;
-        await apiContext.put(`/apps/${testApp._id}/config`, {
+        await apiContext.put(`/api/apps/${testApp._id}/config`, {
           data: {
             assignments: [
               {

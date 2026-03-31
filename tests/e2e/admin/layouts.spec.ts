@@ -64,11 +64,11 @@ test.describe("Layout Management", () => {
       await adminPage.waitForURL(/\/layouts$/);
       await expect(adminPage.getByText(layoutName)).toBeVisible();
 
-      const layoutsRes = await apiContext.get("/layouts");
+      const layoutsRes = await apiContext.get("/api/layouts");
       const layouts: LayoutListItem[] = await layoutsRes.json();
       const created = layouts.find((l) => l.name === layoutName);
       if (created && !created.isBuiltIn) {
-        await apiContext.delete(`/layouts/${created._id}`);
+        await apiContext.delete(`/api/layouts/${created._id}`);
       }
     });
 
@@ -90,7 +90,7 @@ test.describe("Layout Management", () => {
     });
 
     test("edit existing custom layout", async ({ adminPage, apiContext }) => {
-      const createRes = await apiContext.post("/layouts", {
+      const createRes = await apiContext.post("/api/layouts", {
         data: {
           name: `e2e-edit-layout-${Date.now()}`,
           description: "To be edited",
@@ -116,7 +116,7 @@ test.describe("Layout Management", () => {
         adminPage.getByText(`${layout.name}-updated`)
       ).toBeVisible();
 
-      await apiContext.delete(`/layouts/${layout._id}`);
+      await apiContext.delete(`/api/layouts/${layout._id}`);
     });
 
     test("quick template populates regions", async ({ adminPage }) => {
