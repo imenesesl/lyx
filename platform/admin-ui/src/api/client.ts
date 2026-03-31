@@ -1,5 +1,5 @@
-const BASE = (import.meta as any).env?.VITE_API_URL
-  ? `${(import.meta as any).env.VITE_API_URL}/api`
+const BASE = import.meta.env?.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
   : "/api";
 
 function getToken(): string | null {
@@ -37,7 +37,7 @@ async function request<T>(
 
   if (res.status === 401) {
     clearToken();
-    const base = (import.meta as any).env?.BASE_URL ?? "/admin/";
+    const base = import.meta.env?.BASE_URL ?? "/admin/";
     window.location.href = `${base}login`;
     throw new Error("Unauthorized");
   }

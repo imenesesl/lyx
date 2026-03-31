@@ -208,8 +208,9 @@ export function redeployCommand() {
           console.log(chalk.gray("  Running deploy-aws.sh update (builds + pushes all services)..."));
           execSync(`bash scripts/deploy-aws.sh update`, { cwd: scriptDir, stdio: "inherit" });
           console.log(chalk.green("  ✓ SSR re-deployed"));
-        } catch (err: any) {
-          console.error(chalk.red(`  SSR re-deploy failed: ${err.message}`));
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(chalk.red(`  SSR re-deploy failed: ${msg}`));
         }
       }
 

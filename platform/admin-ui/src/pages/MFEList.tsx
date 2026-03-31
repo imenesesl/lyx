@@ -31,8 +31,8 @@ export function MFEList() {
       setName(""); setDescription("");
       setLoading(true);
       api.get<MFEItem[]>("/mfes").then(setMfes).finally(() => setLoading(false));
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setCreating(false);
     }

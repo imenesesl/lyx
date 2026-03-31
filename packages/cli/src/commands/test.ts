@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
+import type chalk from "chalk";
 import type { MFEConfig, ContractReport } from "@lyx/types";
 import { validateContracts } from "../lib/contract-validator";
 
@@ -35,20 +36,20 @@ function discoverMFEs(startDir: string): MFEEntry[] {
   return entries;
 }
 
-function printReport(report: ContractReport, chalk: any): void {
+function printReport(report: ContractReport, chalkInstance: typeof chalk): void {
   const { summary, violations } = report;
 
-  console.log(chalk.cyan("\n  Contract Validation Report\n"));
+  console.log(chalkInstance.cyan("\n  Contract Validation Report\n"));
   console.log(
-    chalk.gray(
+    chalkInstance.gray(
       `  Events: ${summary.events.emitted} emitted, ${summary.events.consumed} consumed`
     )
   );
-  console.log(chalk.gray(`  Shared state keys: ${summary.sharedState.keys}`));
+  console.log(chalkInstance.gray(`  Shared state keys: ${summary.sharedState.keys}`));
   console.log();
 
   if (violations.length === 0) {
-    console.log(chalk.green("  ✓ All contracts are compatible\n"));
+    console.log(chalkInstance.green("  ✓ All contracts are compatible\n"));
     return;
   }
 
@@ -56,35 +57,35 @@ function printReport(report: ContractReport, chalk: any): void {
   const warnings = violations.filter((v) => v.severity === "warning");
 
   if (errors.length > 0) {
-    console.log(chalk.red.bold(`  Errors (${errors.length}):\n`));
+    console.log(chalkInstance.red.bold(`  Errors (${errors.length}):\n`));
     for (const v of errors) {
-      console.log(chalk.red(`    ✗ [${v.code}] ${v.message}`));
-      if (v.producer) console.log(chalk.gray(`      producer: ${v.producer}`));
-      if (v.consumer) console.log(chalk.gray(`      consumer: ${v.consumer}`));
+      console.log(chalkInstance.red(`    ✗ [${v.code}] ${v.message}`));
+      if (v.producer) console.log(chalkInstance.gray(`      producer: ${v.producer}`));
+      if (v.consumer) console.log(chalkInstance.gray(`      consumer: ${v.consumer}`));
       console.log();
     }
   }
 
   if (warnings.length > 0) {
-    console.log(chalk.yellow.bold(`  Warnings (${warnings.length}):\n`));
+    console.log(chalkInstance.yellow.bold(`  Warnings (${warnings.length}):\n`));
     for (const v of warnings) {
-      console.log(chalk.yellow(`    ⚠ [${v.code}] ${v.message}`));
-      if (v.producer) console.log(chalk.gray(`      producer: ${v.producer}`));
-      if (v.consumer) console.log(chalk.gray(`      consumer: ${v.consumer}`));
+      console.log(chalkInstance.yellow(`    ⚠ [${v.code}] ${v.message}`));
+      if (v.producer) console.log(chalkInstance.gray(`      producer: ${v.producer}`));
+      if (v.consumer) console.log(chalkInstance.gray(`      consumer: ${v.consumer}`));
       console.log();
     }
   }
 
   if (report.valid) {
-    console.log(chalk.green("  ✓ Contracts valid (warnings only)\n"));
+    console.log(chalkInstance.green("  ✓ Contracts valid (warnings only)\n"));
   } else {
     console.log(
-      chalk.red(
+      chalkInstance.red(
         `  ✗ ${summary.errors} error(s) found — deploy will be blocked\n`
       )
     );
     console.log(
-      chalk.gray("    Use 'lyx deploy --force' to skip contract validation\n")
+      chalkInstance.gray("    Use 'lyx deploy --force' to skip contract validation\n")
     );
   }
 }

@@ -126,8 +126,13 @@ router.put("/alias", authRequired, async (req, res) => {
     }
 
     res.json({ id: account._id, email: account.email, name: account.name, alias: account.alias ?? null, shellUrl: account.shellUrl ?? "" });
-  } catch (err: any) {
-    if (err.code === 11000) {
+  } catch (err: unknown) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code: unknown }).code === 11000
+    ) {
       res.status(409).json({ error: "That alias is already taken" });
       return;
     }

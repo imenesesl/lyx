@@ -37,7 +37,7 @@ async function main() {
 
   app.use(pinoHttp({
     logger,
-    autoLogging: { ignore: (req) => (req as any).url === "/api/health" },
+    autoLogging: { ignore: (req) => (req.url ?? "") === "/api/health" },
   }));
 
   app.use(express.json({ limit: "10mb" }));

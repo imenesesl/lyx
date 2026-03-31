@@ -1,9 +1,15 @@
 import { Router } from "express";
+import type { Types } from "mongoose";
 import { App } from "../db/models/app.js";
-import { AppConfig } from "../db/models/app-config.js";
+import { AppConfig, type ICanaryRule } from "../db/models/app-config.js";
 import { MFEVersion } from "../db/models/mfe-version.js";
 import { MFEMetric } from "../db/models/mfe-metric.js";
 import { authRequired } from "../middleware/auth.js";
+
+interface PopulatedMfeId {
+  _id: Types.ObjectId;
+  name: string;
+}
 
 const router = Router();
 router.use(authRequired);
@@ -82,24 +88,27 @@ router.post("/:appId/canary", async (req, res) => {
       return;
     }
 
-    const version = await MFEVersion.findById(mfeVersionId).populate("mfeId");
+    const version = await MFEVersion.findById(mfeVersionId)
+      .populate<{ mfeId: PopulatedMfeId }>("mfeId");
     if (!version) {
       res.status(404).json({ error: "MFE version not found" });
       return;
     }
 
+    const populatedMfe = version.mfeId;
     const existing = (config.canaryRules ?? []).filter((r) => r.slotId !== slotId);
-    existing.push({
+    const newRule: ICanaryRule = {
       slotId,
-      canaryMfeId: (version.mfeId as any)._id ?? version.mfeId,
+      canaryMfeId: populatedMfe._id,
       canaryMfeVersionId: version._id,
-      canaryMfeName: (version.mfeId as any).name ?? assignment.mfeName,
+      canaryMfeName: populatedMfe.name ?? assignment.mfeName,
       canaryMfeVersion: version.version,
       canaryRemoteEntryUrl: version.remoteEntryUrl,
       percentage: pct,
       errorThreshold: threshold,
       startedAt: new Date(),
-    } as any);
+    };
+    existing.push(newRule);
 
     config.canaryRules = existing;
     await config.save();
@@ -128,12 +137,8 @@ router.post("/:appId/canary/:slotId/promote", async (req, res) => {
 
     const assignment = config.assignments.find((a) => a.slotId === req.params.slotId);
     if (assignment) {
-      if ((rule as any).canaryMfeId) {
-        assignment.mfeId = (rule as any).canaryMfeId;
-      }
-      if ((rule as any).canaryMfeVersionId) {
-        assignment.mfeVersionId = (rule as any).canaryMfeVersionId;
-      }
+      assignment.mfeId = rule.canaryMfeId;
+      assignment.mfeVersionId = rule.canaryMfeVersionId;
       assignment.mfeName = rule.canaryMfeName;
       assignment.mfeVersion = rule.canaryMfeVersion;
       assignment.remoteEntryUrl = rule.canaryRemoteEntryUrl;

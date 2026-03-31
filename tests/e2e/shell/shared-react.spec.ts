@@ -119,7 +119,7 @@ test.describe("Shared React — no duplicate instances", () => {
     await page.waitForTimeout(5000);
 
     const initialData = await page.evaluate(
-      () => (window as any).__LYX_INITIAL__,
+      () => (window as Window & { __LYX_INITIAL__?: unknown }).__LYX_INITIAL__,
     );
     const regions: Array<{ slot: string; mfe?: string }> =
       initialData?.layout?.regions ?? [];

@@ -54,7 +54,7 @@ export function AppDetail() {
         try { vMap[mfe._id] = await api.get<MFEVersionItem[]>(`/mfes/${mfe._id}/versions`); } catch { vMap[mfe._id] = []; }
       }
       setMfeVersionsMap(vMap);
-    } catch (err: any) { setError(err.message); }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); }
   }
 
   async function loadCanary() {
@@ -71,7 +71,7 @@ export function AppDetail() {
       await api.post(`/apps/${id}/canary`, { slotId, mfeVersionId, percentage });
       await loadCanary();
       setError("");
-    } catch (err: any) { setError(err.message); }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); }
   }
 
   async function handlePromote(slotId: string) {
@@ -79,7 +79,7 @@ export function AppDetail() {
       await api.post(`/apps/${id}/canary/${slotId}/promote`);
       await Promise.all([loadAll(), loadCanary()]);
       setError("");
-    } catch (err: any) { setError(err.message); }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); }
   }
 
   async function handleRollback(slotId: string) {
@@ -87,18 +87,18 @@ export function AppDetail() {
       await api.post(`/apps/${id}/canary/${slotId}/rollback`);
       await loadCanary();
       setError("");
-    } catch (err: any) { setError(err.message); }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); }
   }
 
   async function handleSave() {
     if (!draft) return;
     setSaving(true);
-    try { await api.put(`/apps/${id}/config`, { assignments: draft.assignments }); setError(""); } catch (err: any) { setError(err.message); } finally { setSaving(false); }
+    try { await api.put(`/apps/${id}/config`, { assignments: draft.assignments }); setError(""); } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); } finally { setSaving(false); }
   }
 
   async function handlePublish() {
     setPublishing(true);
-    try { await api.post(`/apps/${id}/publish`, { assignments: draft?.assignments }); await loadAll(); setError(""); } catch (err: any) { setError(err.message); } finally { setPublishing(false); }
+    try { await api.post(`/apps/${id}/publish`, { assignments: draft?.assignments }); await loadAll(); setError(""); } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); } finally { setPublishing(false); }
   }
 
   function assignMfeToSlot(slotId: string, mfeId: string) {
@@ -120,12 +120,12 @@ export function AppDetail() {
 
   async function handleSaveApp() {
     setSavingApp(true);
-    try { const updated = await api.put<AppItem>(`/apps/${id}`, { name: editName, path: editPath, description: editDescription }); setApp(updated); setError(""); } catch (err: any) { setError(err.message); } finally { setSavingApp(false); }
+    try { const updated = await api.put<AppItem>(`/apps/${id}`, { name: editName, path: editPath, description: editDescription }); setApp(updated); setError(""); } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); } finally { setSavingApp(false); }
   }
 
   async function handleDelete() {
     if (!confirm("Are you sure you want to delete this app?")) return;
-    try { await api.del(`/apps/${id}`); navigate("/apps"); } catch (err: any) { setError(err.message); }
+    try { await api.del(`/apps/${id}`); navigate("/apps"); } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); }
   }
 
   if (!app || !draft) return <PageSkeleton />;

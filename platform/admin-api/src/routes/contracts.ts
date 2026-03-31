@@ -35,7 +35,7 @@ router.get("/:appId", async (req, res) => {
       )?.mfeName ?? "unknown",
       version: v.version,
       slot: v.slot,
-      contracts: (v.metadata as any)?.contracts ?? null,
+      contracts: v.metadata?.contracts ?? null,
     }));
 
     res.json({
@@ -60,7 +60,7 @@ router.get("/", async (req, res) => {
       mfeId: v.mfeId,
       version: v.version,
       slot: v.slot,
-      contracts: (v.metadata as any)?.contracts ?? null,
+      contracts: v.metadata?.contracts ?? null,
     }));
 
     res.json(contracts);

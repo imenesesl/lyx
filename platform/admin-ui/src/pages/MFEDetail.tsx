@@ -18,19 +18,19 @@ export function MFEDetail() {
 
   useEffect(() => {
     if (!id) return;
-    api.get<MFEItem>(`/mfes/${id}`).then(setMfe).catch((e) => setError(e.message));
+    api.get<MFEItem>(`/mfes/${id}`).then(setMfe).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
     api.get<MFEVersionItem[]>(`/mfes/${id}/versions`).then(setVersions).catch(() => {});
   }, [id, refreshKey]);
 
   async function handleToggleArchive() {
     if (!mfe) return;
     setToggling(true);
-    try { const updated = await api.put<MFEItem>(`/mfes/${id}`, { archived: !mfe.archived }); setMfe(updated); setError(""); } catch (err: any) { setError(err.message); } finally { setToggling(false); }
+    try { const updated = await api.put<MFEItem>(`/mfes/${id}`, { archived: !mfe.archived }); setMfe(updated); setError(""); } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); } finally { setToggling(false); }
   }
 
   async function handleDelete() {
     if (!confirm("Delete this MFE and all versions permanently?")) return;
-    try { await api.del(`/mfes/${id}`); navigate("/mfes"); } catch (err: any) { setError(err.message); }
+    try { await api.del(`/mfes/${id}`); navigate("/mfes"); } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); }
   }
 
   if (!mfe) return <PageSkeleton />;

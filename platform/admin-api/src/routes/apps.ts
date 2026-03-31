@@ -61,8 +61,13 @@ router.post("/", async (req, res) => {
     });
 
     res.status(201).json(app);
-  } catch (err: any) {
-    if (err.code === 11000) {
+  } catch (err: unknown) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code: unknown }).code === 11000
+    ) {
       res.status(409).json({ error: "An app with that name already exists in your account" });
       return;
     }
@@ -108,8 +113,13 @@ router.put("/:id", async (req, res) => {
       return;
     }
     res.json(app);
-  } catch (err: any) {
-    if (err.code === 11000) {
+  } catch (err: unknown) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code: unknown }).code === 11000
+    ) {
       res.status(409).json({ error: "An app with that path already exists" });
       return;
     }

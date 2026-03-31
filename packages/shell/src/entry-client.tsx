@@ -3,7 +3,7 @@ import { hydrateRoot, createRoot } from "react-dom/client";
 import { ShellApp } from "./ShellApp";
 
 const container = document.getElementById("root")!;
-const initialData = (window as any).__LYX_INITIAL__;
+const initialData = window.__LYX_INITIAL__;
 
 function renderApp() {
   const root = createRoot(container);

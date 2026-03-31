@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import type { ResultPromise } from "execa";
 import { readdirSync, existsSync, readFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 
@@ -33,7 +34,7 @@ export function devCommand() {
       console.log(chalk.cyan("\n  Lyx Dev Server\n"));
       console.log(chalk.gray(`  Registry:  http://localhost:${registryPort}`));
 
-      const processes: any[] = [];
+      const processes: ResultPromise[] = [];
 
       // Start registry server
       console.log(chalk.green("  Starting registry server..."));

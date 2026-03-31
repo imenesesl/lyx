@@ -28,8 +28,8 @@ export function Settings() {
       await refreshAccount();
       setAliasSuccess(true);
       setTimeout(() => setAliasSuccess(false), 3000);
-    } catch (err: any) {
-      setAliasError(err.message);
+    } catch (err: unknown) {
+      setAliasError(err instanceof Error ? err.message : String(err));
     } finally {
       setAliasSaving(false);
     }
@@ -44,8 +44,8 @@ export function Settings() {
       await refreshAccount();
       setShellUrlSuccess(true);
       setTimeout(() => setShellUrlSuccess(false), 3000);
-    } catch (err: any) {
-      setShellUrlError(err.message);
+    } catch (err: unknown) {
+      setShellUrlError(err instanceof Error ? err.message : String(err));
     } finally {
       setShellUrlSaving(false);
     }

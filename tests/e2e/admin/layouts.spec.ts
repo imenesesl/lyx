@@ -2,6 +2,12 @@ import { test, expect } from "../fixtures/test-fixtures";
 
 const ADMIN_URL = process.env.ADMIN_URL ?? "http://localhost:4001";
 
+interface LayoutListItem {
+  _id: string;
+  name: string;
+  isBuiltIn: boolean;
+}
+
 test.describe("Layout Management", () => {
   test.describe("Layout List", () => {
     test("layouts page lists built-in templates", async ({ adminPage }) => {
@@ -59,10 +65,8 @@ test.describe("Layout Management", () => {
       await expect(adminPage.getByText(layoutName)).toBeVisible();
 
       const layoutsRes = await apiContext.get("/layouts");
-      const layouts = await layoutsRes.json();
-      const created = layouts.find(
-        (l: any) => l.name === layoutName
-      );
+      const layouts: LayoutListItem[] = await layoutsRes.json();
+      const created = layouts.find((l) => l.name === layoutName);
       if (created && !created.isBuiltIn) {
         await apiContext.delete(`/layouts/${created._id}`);
       }

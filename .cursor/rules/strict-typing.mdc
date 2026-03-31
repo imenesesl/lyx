@@ -1,0 +1,77 @@
+---
+description: "Strict TypeScript typing — zero tolerance for `any` and type hacks"
+globs: "**/*.{ts,tsx}"
+alwaysApply: true
+---
+
+# Strict TypeScript Typing
+
+**ABSOLUTE RULE**: Never use `any`. Never use `as any`. Never use type assertions to bypass the compiler. No exceptions.
+
+## What To Do Instead
+
+### Unknown external data
+
+```typescript
+// ❌ FORBIDDEN
+const data = response.json() as any;
+
+// ✅ CORRECT
+interface ApiResponse { name: string; version: string }
+const data: ApiResponse = await response.json();
+```
+
+### Missing type definitions
+
+```typescript
+// ❌ FORBIDDEN
+(module as any).version
+
+// ✅ CORRECT — extend the type
+interface ModuleWithVersion extends Module {
+  version?: string;
+}
+```
+
+### Complex generic functions
+
+```typescript
+// ❌ FORBIDDEN
+function process(input: any): any { ... }
+
+// ✅ CORRECT
+function process<T extends Record<string, unknown>>(input: T): T { ... }
+```
+
+### Third-party libraries without types
+
+```typescript
+// ❌ FORBIDDEN
+const lib = require("untyped-lib") as any;
+
+// ✅ CORRECT — create a declaration file (e.g. types/untyped-lib.d.ts)
+declare module "untyped-lib" {
+  export function doThing(input: string): Promise<Result>;
+}
+```
+
+### Mongoose/DB model fields
+
+```typescript
+// ❌ FORBIDDEN
+(version.mfeId as any).name
+
+// ✅ CORRECT — use populate type or interface
+interface PopulatedVersion extends IMFEVersion {
+  mfeId: IMFEVersion["mfeId"] & { name: string; _id: Types.ObjectId };
+}
+const version = await MFEVersion.findById(id).populate<{ mfeId: { name: string; _id: Types.ObjectId } }>("mfeId");
+```
+
+## Pre-Commit Check
+
+Before every commit, run `tsc --noEmit` on changed packages. Zero errors, zero `any`.
+
+## Fixing Existing `any` Usage
+
+When touching a file that contains `any`, fix every instance in that file before committing. Never add new `any` to the codebase.

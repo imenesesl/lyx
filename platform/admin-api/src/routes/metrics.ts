@@ -1,8 +1,29 @@
 import { Router } from "express";
-import { MFEMetric } from "../db/models/mfe-metric.js";
+import { MFEMetric, type IMFEMetric } from "../db/models/mfe-metric.js";
 import { authRequired } from "../middleware/auth.js";
 
 const router = Router();
+
+type MetricTypeName = IMFEMetric["type"];
+
+function isMetricType(value: unknown): value is MetricTypeName {
+  return (
+    value === "load_success" ||
+    value === "load_error" ||
+    value === "render_error" ||
+    value === "event_timeout"
+  );
+}
+
+interface RawMetricItem {
+  mfeName?: unknown;
+  mfeVersion?: unknown;
+  slot?: unknown;
+  type?: unknown;
+  loadTimeMs?: unknown;
+  errorMessage?: unknown;
+  timestamp?: unknown;
+}
 
 function percentile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;
@@ -18,15 +39,27 @@ router.post("/", async (req, res) => {
       return;
     }
 
-    const docs = metrics.slice(0, 100).map((m: any) => ({
-      mfeName: String(m.mfeName ?? ""),
-      mfeVersion: String(m.mfeVersion ?? ""),
-      slot: String(m.slot ?? ""),
-      type: m.type,
-      loadTimeMs: m.loadTimeMs != null ? Number(m.loadTimeMs) : undefined,
-      errorMessage: m.errorMessage ? String(m.errorMessage).slice(0, 500) : undefined,
-      timestamp: new Date(m.timestamp ?? Date.now()),
-    }));
+    const docs = metrics.slice(0, 100).map((item: unknown) => {
+      const m: RawMetricItem =
+        typeof item === "object" && item !== null ? (item as RawMetricItem) : {};
+      const typeField = m.type;
+      const rawTs = m.timestamp;
+      const timestamp =
+        rawTs instanceof Date
+          ? rawTs
+          : new Date(
+              typeof rawTs === "string" || typeof rawTs === "number" ? rawTs : Date.now()
+            );
+      return {
+        mfeName: String(m.mfeName ?? ""),
+        mfeVersion: String(m.mfeVersion ?? ""),
+        slot: String(m.slot ?? ""),
+        type: isMetricType(typeField) ? typeField : "load_success",
+        loadTimeMs: m.loadTimeMs != null ? Number(m.loadTimeMs) : undefined,
+        errorMessage: m.errorMessage ? String(m.errorMessage).slice(0, 500) : undefined,
+        timestamp,
+      };
+    });
 
     await MFEMetric.insertMany(docs, { ordered: false });
     res.status(201).json({ ingested: docs.length });

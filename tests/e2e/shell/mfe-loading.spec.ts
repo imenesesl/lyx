@@ -61,10 +61,12 @@ test.describe("Shell MFE Loading", () => {
   test("multiple MFEs load in correct slot regions", async ({ page }) => {
     await page.goto(`${SHELL_URL}/${ACCOUNT_ID}/${APP_SLUG}`);
 
-    const initialData = await page.evaluate(() => (window as any).__LYX_INITIAL__);
+    const initialData = await page.evaluate(
+      () => (window as Window & { __LYX_INITIAL__?: Record<string, unknown> }).__LYX_INITIAL__
+    );
     expect(initialData).toBeDefined();
 
-    const layout = initialData.layout;
+    const layout = (initialData as Record<string, unknown>).layout as Record<string, unknown>;
     const regions: Array<{ slot: string; position: string }> = layout.regions ?? [];
 
     for (const region of regions) {
@@ -97,8 +99,11 @@ test.describe("Shell MFE Loading", () => {
   }) => {
     await page.goto(`${SHELL_URL}/${ACCOUNT_ID}/${APP_SLUG}`);
 
-    const initialData = await page.evaluate(() => (window as any).__LYX_INITIAL__);
-    const regions = initialData.layout.regions;
+    const initialData = await page.evaluate(
+      () => (window as Window & { __LYX_INITIAL__?: Record<string, unknown> }).__LYX_INITIAL__
+    );
+    const layout = (initialData as Record<string, unknown>).layout as Record<string, unknown>;
+    const regions = layout.regions as Array<Record<string, unknown>>;
 
     expect(Array.isArray(regions)).toBe(true);
     expect(regions.length).toBeGreaterThan(0);

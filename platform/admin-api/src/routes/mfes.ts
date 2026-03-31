@@ -1,16 +1,23 @@
 import { Router } from "express";
 import multer from "multer";
-import { createReadStream } from "node:fs";
+import { createReadStream, type Stats } from "node:fs";
 import { readdir, stat, readFile } from "node:fs/promises";
 import { join, extname } from "node:path";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import * as tar from "tar";
+import type { ReadEntry } from "tar";
+import type { Types } from "mongoose";
 import { MFE } from "../db/models/mfe.js";
 import { MFEVersion } from "../db/models/mfe-version.js";
 import { AppConfig } from "../db/models/app-config.js";
 import { authRequired } from "../middleware/auth.js";
 import { uploadFile } from "../services/storage.js";
+
+interface PopulatedAppId {
+  _id: Types.ObjectId;
+  name: string;
+}
 
 const router = Router();
 const upload = multer({ dest: tmpdir(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -54,8 +61,13 @@ router.post("/", async (req, res) => {
       description: description ?? "",
     });
     res.status(201).json(mfe);
-  } catch (err: any) {
-    if (err.code === 11000) {
+  } catch (err: unknown) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code: unknown }).code === 11000
+    ) {
       res.status(409).json({ error: "An MFE with that name already exists" });
       return;
     }
@@ -121,9 +133,9 @@ router.post("/:id/versions", upload.single("bundle"), async (req, res) => {
     await tar.extract({
       file: req.file.path,
       cwd: tmpDir,
-      filter: (path: string, entry: any) => {
+      filter: (path: string, entry: Stats | ReadEntry) => {
         if (path.includes("..")) return false;
-        if (entry.type === "SymbolicLink" || entry.type === "Link") return false;
+        if ("type" in entry && (entry.type === "SymbolicLink" || entry.type === "Link")) return false;
         return true;
       },
     });
@@ -213,9 +225,9 @@ router.put("/:id/versions/:version", upload.single("bundle"), async (req, res) =
     await tar.extract({
       file: req.file.path,
       cwd: tmpDir,
-      filter: (path: string, entry: any) => {
+      filter: (path: string, entry: Stats | ReadEntry) => {
         if (path.includes("..")) return false;
-        if (entry.type === "SymbolicLink" || entry.type === "Link") return false;
+        if ("type" in entry && (entry.type === "SymbolicLink" || entry.type === "Link")) return false;
         return true;
       },
     });
@@ -294,10 +306,10 @@ router.delete("/:id", async (req, res) => {
     const usedIn = await AppConfig.find({
       "assignments.mfeId": mfe._id,
       status: "published",
-    }).populate("appId", "name slug");
+    }).populate<{ appId: PopulatedAppId }>("appId", "name slug");
 
     if (usedIn.length > 0) {
-      const appNames = [...new Set(usedIn.map((c: any) => c.appId?.name ?? "unknown"))];
+      const appNames = [...new Set(usedIn.map((c) => c.appId?.name ?? "unknown"))];
       res.status(409).json({
         error: `Cannot delete: MFE is used in published apps: ${appNames.join(", ")}. Archive it instead.`,
       });

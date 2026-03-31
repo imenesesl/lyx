@@ -2,16 +2,32 @@ import type { ComponentType } from "react";
 import type { MFERegistryEntry } from "@lyx/types";
 import { getLyxConfig } from "./config";
 
-const moduleCache = new Map<string, ComponentType<any>>();
+type AnyComponent = ComponentType<Record<string, unknown>>;
 
-/**
- * Dynamically load an MFE by name from the registry.
- * Returns the default-exported React component.
- */
+interface MFEContainer {
+  init?: (shareScopes: Record<string, unknown>) => Promise<void>;
+  get: (module: string) => Promise<() => { default?: AnyComponent }>;
+}
+
+function getWindowProperty(key: string): unknown {
+  return (window as unknown as Record<string, unknown>)[key];
+}
+
+function getWindowContainer(name: string): MFEContainer | undefined {
+  return getWindowProperty(name) as MFEContainer | undefined;
+}
+
+function getWebpackShareScopes(): { default?: Record<string, unknown> } | undefined {
+  return getWindowProperty("__webpack_share_scopes__") as
+    { default?: Record<string, unknown> } | undefined;
+}
+
+const moduleCache = new Map<string, AnyComponent>();
+
 export async function loadMFE(
   name: string,
   registryUrl?: string
-): Promise<ComponentType<any>> {
+): Promise<AnyComponent> {
   if (moduleCache.has(name)) {
     return moduleCache.get(name)!;
   }
@@ -30,10 +46,10 @@ export async function loadMFE(
 
 async function loadRemoteScript(
   entry: MFERegistryEntry
-): Promise<ComponentType<any>> {
+): Promise<AnyComponent> {
   const { name, remoteEntry } = entry;
 
-  const existing = (window as any)[name];
+  const existing = getWindowContainer(name);
   if (existing) {
     return extractDefault(existing);
   }
@@ -46,7 +62,7 @@ async function loadRemoteScript(
 
     script.onload = async () => {
       try {
-        const container = (window as any)[name];
+        const container = getWindowContainer(name);
         if (!container) {
           reject(new Error(`[lyx] Container "${name}" not found after loading script`));
           return;
@@ -65,15 +81,15 @@ async function loadRemoteScript(
 }
 
 async function extractDefault(
-  container: any
-): Promise<ComponentType<any>> {
+  container: MFEContainer
+): Promise<AnyComponent> {
   if (typeof container.init === "function") {
-    const shareScopes = (window as any).__webpack_share_scopes__?.default;
-    if (shareScopes) {
-      await container.init(shareScopes);
+    const scopes = getWebpackShareScopes() as { default?: Record<string, unknown> } | undefined;
+    if (scopes?.default) {
+      await container.init(scopes.default);
     }
   }
   const factory = await container.get("./default");
   const mod = factory();
-  return mod.default ?? mod;
+  return mod.default ?? (() => null);
 }

@@ -15,12 +15,12 @@ export function Layouts() {
 
   useEffect(() => {
     setLoading(true);
-    api.get<LayoutTemplate[]>("/layouts").then(setLayouts).catch((e: any) => setError(e.message)).finally(() => setLoading(false));
+    api.get<LayoutTemplate[]>("/layouts").then(setLayouts).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e))).finally(() => setLoading(false));
   }, [refreshKey]);
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete layout "${name}"?`)) return;
-    try { await api.del(`/layouts/${id}`); setError(""); setLoading(true); api.get<LayoutTemplate[]>("/layouts").then(setLayouts).finally(() => setLoading(false)); } catch (e: any) { setError(e.message); }
+    try { await api.del(`/layouts/${id}`); setError(""); setLoading(true); api.get<LayoutTemplate[]>("/layouts").then(setLayouts).finally(() => setLoading(false)); } catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)); }
   }
 
   return (

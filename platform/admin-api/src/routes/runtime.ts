@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { Types } from "mongoose";
 import { App } from "../db/models/app.js";
-import { AppConfig, type ICanaryRule } from "../db/models/app-config.js";
+import { AppConfig, type IAppConfig, type ICanaryRule } from "../db/models/app-config.js";
 import { Account } from "../db/models/account.js";
 import cookie from "cookie";
 import { MFEMetric } from "../db/models/mfe-metric.js";
@@ -70,7 +70,7 @@ function makeEntry(name: string, slot: string, version: string, remoteEntry: str
   };
 }
 
-async function checkAutoRollback(config: any, rule: ICanaryRule): Promise<boolean> {
+async function checkAutoRollback(config: IAppConfig, rule: ICanaryRule): Promise<boolean> {
   const since = rule.startedAt;
   const minSamples = 10;
 

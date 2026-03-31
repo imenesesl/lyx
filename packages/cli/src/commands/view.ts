@@ -56,8 +56,9 @@ export function viewCommand() {
           });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           apps = (await res.json()) as Array<{ _id: string; name: string; slug: string }>;
-        } catch (err: any) {
-          console.error(chalk.red(`\n  Cannot reach server: ${err.message}\n`));
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(chalk.red(`\n  Cannot reach server: ${msg}\n`));
           process.exit(1);
         }
 
@@ -87,8 +88,9 @@ export function viewCommand() {
           console.error(chalk.red(`\n  App "/${slug}" has no published version. Publish it first.\n`));
           process.exit(1);
         }
-      } catch (err: any) {
-        console.error(chalk.red(`\n  Cannot reach server: ${err.message}\n`));
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(chalk.red(`\n  Cannot reach server: ${msg}\n`));
         process.exit(1);
       }
 

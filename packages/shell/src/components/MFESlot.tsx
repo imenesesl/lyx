@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useState, useRef, type ComponentType } from "react";
 import * as ReactDOM from "react-dom";
 import type { MFERegistryEntry } from "@lyx/types";
+import type { ShareArgs } from "@module-federation/runtime-core/dist/type/config";
 import { startLoadTimer, reportRenderError } from "@lyx/sdk";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { SlotSkeleton } from "./SlotSkeleton";
@@ -198,7 +199,7 @@ function remoteKey(name: string, version: string): string {
 export async function loadMFEComponent(
   entry: MFERegistryEntry,
   mf: typeof import("@module-federation/runtime")
-): Promise<ComponentType<any> | null> {
+): Promise<ComponentType<Record<string, unknown>> | null> {
   const { name, remoteEntry, version } = entry;
 
   if (!runtimeInitialized) {
@@ -212,42 +213,41 @@ export async function loadMFEComponent(
             scope: "default",
             lib: () => React,
             shareConfig: { singleton: true, requiredVersion: `^${React.version}` },
-          },
+          } satisfies ShareArgs,
           "react-dom": {
-            version: (ReactDOM as any).version ?? React.version,
+            version: ReactDOM.version ?? React.version,
             scope: "default",
             lib: () => ReactDOM,
             shareConfig: { singleton: true, requiredVersion: `^${React.version}` },
-          },
+          } satisfies ShareArgs,
         },
       });
     } catch { /* already initialized */ }
 
     try {
-      mf.registerShared({
-        react: {
-          version: React.version,
-          scope: "default",
-          get: async () => () => React,
-          lib: () => React,
-          shareConfig: { singleton: true, requiredVersion: `^${React.version}` },
-          loaded: true,
-        } as any,
-        "react-dom": {
-          version: (ReactDOM as any).version ?? React.version,
-          scope: "default",
-          get: async () => () => ReactDOM,
-          lib: () => ReactDOM,
-          shareConfig: { singleton: true, requiredVersion: `^${React.version}` },
-          loaded: true,
-        } as any,
-      });
+      const reactShared: ShareArgs = {
+        version: React.version,
+        scope: "default",
+        get: async () => () => React,
+        lib: () => React,
+        shareConfig: { singleton: true, requiredVersion: `^${React.version}` },
+        loaded: true,
+      };
+      const reactDomShared: ShareArgs = {
+        version: ReactDOM.version ?? React.version,
+        scope: "default",
+        get: async () => () => ReactDOM,
+        lib: () => ReactDOM,
+        shareConfig: { singleton: true, requiredVersion: `^${React.version}` },
+        loaded: true,
+      };
+      mf.registerShared({ react: reactShared, "react-dom": reactDomShared });
     } catch { /* already registered */ }
 
     runtimeInitialized = true;
   }
 
-  const ts = (entry as any).timestamp ?? Date.now();
+  const ts = entry.timestamp ?? Date.now();
   const rawUrl = remoteEntry.startsWith("http")
     ? remoteEntry
     : `${window.location.origin}${remoteEntry}`;
@@ -264,9 +264,11 @@ export async function loadMFEComponent(
     registeredRemotes.set(key, entryUrl);
   }
 
-  const mod = await mf.loadRemote(`${key}/default`) as
-    { default: ComponentType<any> } | null;
+  interface RemoteModule {
+    default?: ComponentType<Record<string, unknown>>;
+  }
+  const mod = await mf.loadRemote(`${key}/default`) as RemoteModule | null;
 
   if (!mod) return null;
-  return mod.default ?? (mod as any);
+  return mod.default ?? null;
 }

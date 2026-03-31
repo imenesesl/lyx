@@ -28,7 +28,9 @@ test.describe("Shell SSR", () => {
     }) => {
       await page.goto(`${SHELL_URL}/${ACCOUNT_ID}/${APP_SLUG}`);
 
-      const initialData = await page.evaluate(() => (window as any).__LYX_INITIAL__);
+      const initialData = await page.evaluate(
+        () => (window as Window & { __LYX_INITIAL__?: Record<string, unknown> }).__LYX_INITIAL__
+      );
       expect(initialData).toBeDefined();
       expect(initialData).toHaveProperty("layout");
       expect(initialData).toHaveProperty("registryBase");

@@ -117,8 +117,9 @@ export function publishCommand() {
           mfeId = created._id;
           console.log(chalk.gray(`    Created MFE: ${mfeId}`));
         }
-      } catch (err: any) {
-        console.error(chalk.red(`  Failed to reach server: ${err.message}`));
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(chalk.red(`  Failed to reach server: ${msg}`));
         process.exit(1);
       }
 
@@ -142,12 +143,13 @@ export function publishCommand() {
           throw new Error(err.error ?? `HTTP ${uploadRes.status}`);
         }
 
-        const result = await uploadRes.json();
+        const result: { remoteEntryUrl?: string; _id?: string } = await uploadRes.json();
         console.log(chalk.green(`\n  Published ${name}@${version} successfully!`));
-        console.log(chalk.gray(`  Remote entry: ${(result as any).remoteEntryUrl}`));
-        console.log(chalk.gray(`  Version ID: ${(result as any)._id}\n`));
-      } catch (err: any) {
-        console.error(chalk.red(`  Upload failed: ${err.message}`));
+        console.log(chalk.gray(`  Remote entry: ${result.remoteEntryUrl}`));
+        console.log(chalk.gray(`  Version ID: ${result._id}\n`));
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(chalk.red(`  Upload failed: ${msg}`));
         process.exit(1);
       } finally {
         const { unlinkSync } = await import("node:fs");

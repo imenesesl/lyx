@@ -76,8 +76,9 @@ export function loginCommand() {
 
         console.log(chalk.green(`  Logged in as ${data.account.name} (${data.account.email})`));
         console.log(chalk.gray(`  Credentials saved to ~/.lyxrc\n`));
-      } catch (err: any) {
-        console.error(chalk.red(`  Login failed: ${err.message}`));
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(chalk.red(`  Login failed: ${msg}`));
         process.exit(1);
       }
     });

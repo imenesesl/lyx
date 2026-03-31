@@ -13,6 +13,12 @@ interface Region {
   size?: string;
 }
 
+interface LayoutDraftResponse {
+  name: string;
+  description: string;
+  regions: Region[];
+}
+
 const POSITIONS: { value: Position; label: string; color: string }[] = [
   { value: "top", label: "Top", color: "rgba(99, 102, 241, 0.3)" },
   { value: "left", label: "Left", color: "rgba(34, 197, 94, 0.3)" },
@@ -38,11 +44,11 @@ export function LayoutBuilder() {
 
   useEffect(() => {
     if (!id) return;
-    api.get<any>(`/layouts/${id}`).then((layout) => {
+    api.get<LayoutDraftResponse>(`/layouts/${id}`).then((layout) => {
       setName(layout.name);
       setDescription(layout.description);
       setRegions(layout.regions);
-    }).catch((e) => setError(e.message));
+    }).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, [id]);
 
   function addRegion() {
@@ -104,8 +110,8 @@ export function LayoutBuilder() {
         await api.post("/layouts", { name, description, regions });
       }
       navigate("/layouts");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }

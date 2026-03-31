@@ -51,7 +51,7 @@ If expired or missing, guide the user to: `lyx aws login`
 
 - Language: TypeScript (strict)
 - All user-facing text, comments, docs: **English only**
-- No `any` types unless unavoidable — prefer explicit typing
+- **NEVER use `any` or `as any`** — see `.cursor/rules/strict-typing.mdc` for alternatives
 - Functional React components only — no class components
 - Use `@lyx/sdk` for inter-MFE communication, never `window` directly
 - Error handling: always catch and log, never swallow errors

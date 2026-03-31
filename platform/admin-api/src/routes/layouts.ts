@@ -42,8 +42,13 @@ router.post("/", authRequired, async (req, res) => {
       isBuiltIn: false,
     });
     res.status(201).json(layout);
-  } catch (err: any) {
-    if (err.code === 11000) {
+  } catch (err: unknown) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code: unknown }).code === 11000
+    ) {
       res.status(409).json({ error: "A layout with that name already exists" });
       return;
     }
@@ -76,8 +81,13 @@ router.put("/:id", authRequired, async (req, res) => {
 
     await layout.save();
     res.json(layout);
-  } catch (err: any) {
-    if (err.code === 11000) {
+  } catch (err: unknown) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code: unknown }).code === 11000
+    ) {
       res.status(409).json({ error: "A layout with that name already exists" });
       return;
     }

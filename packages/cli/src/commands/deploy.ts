@@ -242,14 +242,15 @@ export function deployCommand() {
               body: JSON.stringify({ name: mfe.name, description: `Deployed via lyx deploy` }),
             });
             if (!createRes.ok) {
-              const err = await createRes.json();
-              throw new Error((err as any).error ?? `HTTP ${createRes.status}`);
+              const err: { error?: string } = await createRes.json();
+              throw new Error(err.error ?? `HTTP ${createRes.status}`);
             }
             mfeId = ((await createRes.json()) as { _id: string })._id;
             version = opts.ver ?? mfe.version;
           }
-        } catch (err: any) {
-          console.error(chalk.red(`  Server error: ${err.message}. Skipping.`));
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(chalk.red(`  Server error: ${msg}. Skipping.`));
           continue;
         }
 
@@ -310,8 +311,8 @@ export function deployCommand() {
           });
 
           if (!uploadRes.ok) {
-            const err = await uploadRes.json();
-            throw new Error((err as any).error ?? `HTTP ${uploadRes.status}`);
+            const err: { error?: string } = await uploadRes.json();
+            throw new Error(err.error ?? `HTTP ${uploadRes.status}`);
           }
 
           const result = (await uploadRes.json()) as { remoteEntryUrl: string; _id: string };
@@ -335,18 +336,20 @@ export function deployCommand() {
                 }),
               });
               if (canaryRes.ok) {
-                const canaryResult = await canaryRes.json();
-                console.log(chalk.green(`  ✓ ${(canaryResult as any).message}`));
+                const canaryResult: { message?: string } = await canaryRes.json();
+                console.log(chalk.green(`  ✓ ${canaryResult.message}`));
               } else {
-                const canaryErr = await canaryRes.json();
-                console.error(chalk.red(`  Canary setup failed: ${(canaryErr as any).error}`));
+                const canaryErr: { error?: string } = await canaryRes.json();
+                console.error(chalk.red(`  Canary setup failed: ${canaryErr.error}`));
               }
-            } catch (err: any) {
-              console.error(chalk.red(`  Canary setup error: ${err.message}`));
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : String(err);
+              console.error(chalk.red(`  Canary setup error: ${msg}`));
             }
           }
-        } catch (err: any) {
-          console.error(chalk.red(`  Upload failed: ${err.message}`));
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(chalk.red(`  Upload failed: ${msg}`));
         } finally {
           try { unlinkSync(tarballPath); } catch {}
         }

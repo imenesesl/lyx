@@ -1,5 +1,5 @@
-import { createStore, type StoreApi } from "zustand/vanilla";
-import { devtools } from "zustand/middleware";
+import { createStore } from "zustand/vanilla";
+import { devtools, type NamedSet } from "zustand/middleware";
 
 type Listener = () => void;
 
@@ -11,17 +11,30 @@ interface InternalStore extends LyxStoreState {
   _listeners: Record<string, Set<Listener>>;
 }
 
-function getGlobalStore(): StoreApi<InternalStore> {
-  const w = globalThis as any;
-  if (!w.__lyx_zustand_store__) {
-    w.__lyx_zustand_store__ = createStore<InternalStore>()(
-      devtools(
-        () => ({ slices: {} as Record<string, unknown>, _listeners: {} as Record<string, Set<Listener>> }),
-        { name: "Lyx Shared State", enabled: true }
-      )
-    );
+type DevtoolsSetState = NamedSet<InternalStore>;
+
+interface LyxGlobal {
+  __lyx_zustand_store__?: ReturnType<typeof createLyxStore>;
+}
+
+function createLyxStore() {
+  return createStore<InternalStore>()(
+    devtools(
+      () => ({
+        slices: {} as Record<string, unknown>,
+        _listeners: {} as Record<string, Set<Listener>>,
+      }),
+      { name: "Lyx Shared State", enabled: true }
+    )
+  );
+}
+
+function getGlobalStore() {
+  const g = globalThis as typeof globalThis & LyxGlobal;
+  if (!g.__lyx_zustand_store__) {
+    g.__lyx_zustand_store__ = createLyxStore();
   }
-  return w.__lyx_zustand_store__;
+  return g.__lyx_zustand_store__;
 }
 
 export function getSharedValue<T>(key: string): T | undefined {
@@ -34,7 +47,8 @@ export function setSharedValue<T>(key: string, value: T | ((prev: T) => T)): voi
   const prev = state.slices[key] as T;
   const next = typeof value === "function" ? (value as (p: T) => T)(prev) : value;
 
-  (store.setState as any)(
+  const setState = store.setState as DevtoolsSetState;
+  setState(
     { slices: { ...state.slices, [key]: next } },
     false,
     `shared/${key}`
@@ -78,7 +92,8 @@ export function createSharedStore<T extends Record<string, unknown>>(
 ) {
   const store = getGlobalStore();
   if (!(name in store.getState().slices)) {
-    (store.setState as any)(
+    const setState = store.setState as DevtoolsSetState;
+    setState(
       { slices: { ...store.getState().slices, [name]: initialState } },
       false,
       `shared/${name}/init`

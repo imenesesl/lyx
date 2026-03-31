@@ -11,14 +11,12 @@ interface EventLogEntry {
 }
 
 function getStoreSnapshot(): Record<string, unknown> {
-  const w = globalThis as any;
-  return w.__lyx_zustand_store__?.getState()?.slices ?? {};
+  return globalThis.__lyx_zustand_store__?.getState()?.slices ?? {};
 }
 
 function subscribeStore(cb: () => void): () => void {
-  const w = globalThis as any;
-  if (w.__lyx_zustand_store__?.subscribe) {
-    return w.__lyx_zustand_store__.subscribe(cb);
+  if (globalThis.__lyx_zustand_store__?.subscribe) {
+    return globalThis.__lyx_zustand_store__.subscribe(cb);
   }
   return () => {};
 }
