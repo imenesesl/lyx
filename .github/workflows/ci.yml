@@ -85,7 +85,7 @@ jobs:
 
       - name: Run E2E tests (Admin UI + Shell)
         if: steps.e2e-check.outputs.available == 'true'
-        run: pnpm test:e2e
+        run: npx playwright test
         env:
           ADMIN_URL: ${{ secrets.ADMIN_URL }}
           SHELL_URL: ${{ secrets.SHELL_URL }}
