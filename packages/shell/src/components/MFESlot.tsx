@@ -1,8 +1,22 @@
 import React, { Suspense, useEffect, useState, useRef, type ComponentType } from "react";
 import * as ReactDOM from "react-dom";
 import type { MFERegistryEntry } from "@lyx/types";
-import type { ShareArgs } from "@module-federation/runtime-core/dist/type/config";
 import { startLoadTimer, reportRenderError } from "@lyx/sdk";
+
+interface SharedConfig {
+  singleton?: boolean;
+  requiredVersion: false | string;
+  eager?: boolean;
+}
+
+interface ShareArgs {
+  version?: string;
+  scope?: string | Array<string>;
+  shareConfig?: SharedConfig;
+  get?: (() => () => unknown) | (() => Promise<() => unknown>);
+  lib?: () => unknown;
+  loaded?: boolean;
+}
 import { ErrorBoundary } from "./ErrorBoundary";
 import { SlotSkeleton } from "./SlotSkeleton";
 

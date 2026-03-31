@@ -71,8 +71,8 @@ export function lyxPlugin(options: LyxPluginOptions = {}): Plugin[] {
       ...(mfEntry.exposes ?? {}),
     },
     shared: {
-      react: { singleton: true, import: false, requiredVersion: false },
-      "react-dom": { singleton: true, import: false, requiredVersion: false },
+      react: { singleton: true, import: false, requiredVersion: "*" },
+      "react-dom": { singleton: true, import: false, requiredVersion: "*" },
       ...(mfEntry.shared ?? {}),
     },
   });

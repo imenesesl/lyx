@@ -7,22 +7,19 @@ interface LyxStoreState {
   slices: Record<string, unknown>;
 }
 
-interface InternalStore extends LyxStoreState {
-  _listeners: Record<string, Set<Listener>>;
-}
+type DevtoolsSetState = NamedSet<LyxStoreState>;
 
-type DevtoolsSetState = NamedSet<InternalStore>;
+const sliceListeners = new Map<string, Set<Listener>>();
 
 interface LyxGlobal {
   __lyx_zustand_store__?: ReturnType<typeof createLyxStore>;
 }
 
 function createLyxStore() {
-  return createStore<InternalStore>()(
+  return createStore<LyxStoreState>()(
     devtools(
       () => ({
         slices: {} as Record<string, unknown>,
-        _listeners: {} as Record<string, Set<Listener>>,
       }),
       { name: "Lyx Shared State", enabled: true }
     )
@@ -54,18 +51,16 @@ export function setSharedValue<T>(key: string, value: T | ((prev: T) => T)): voi
     `shared/${key}`
   );
 
-  state._listeners[key]?.forEach((l: Listener) => l());
+  sliceListeners.get(key)?.forEach((l) => l());
 }
 
 export function subscribeShared(key: string, listener: Listener): () => void {
-  const store = getGlobalStore();
-  const state = store.getState();
-  if (!state._listeners[key]) {
-    state._listeners[key] = new Set();
+  if (!sliceListeners.has(key)) {
+    sliceListeners.set(key, new Set());
   }
-  state._listeners[key].add(listener);
+  sliceListeners.get(key)!.add(listener);
   return () => {
-    state._listeners[key]?.delete(listener);
+    sliceListeners.get(key)?.delete(listener);
   };
 }
 

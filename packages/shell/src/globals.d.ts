@@ -1,5 +1,4 @@
 import type { Layout } from "@lyx/types";
-import type { StoreApi } from "zustand";
 
 interface LyxInitialData {
   layout: Layout;
@@ -7,15 +6,18 @@ interface LyxInitialData {
   registryBase: string;
 }
 
-interface LyxZustandStore extends StoreApi<{ slices: Record<string, unknown> }> {}
+interface LyxGlobalStore {
+  getState(): { slices: Record<string, unknown> };
+  subscribe(listener: (state: { slices: Record<string, unknown> }, prev: { slices: Record<string, unknown> }) => void): () => void;
+}
 
 declare global {
   interface Window {
     __LYX_INITIAL__?: LyxInitialData;
-    __lyx_zustand_store__?: LyxZustandStore;
+    __lyx_zustand_store__?: LyxGlobalStore;
   }
 
-  var __lyx_zustand_store__: LyxZustandStore | undefined;
+  var __lyx_zustand_store__: LyxGlobalStore | undefined;
 
   const __LYX_REGISTRY_URL__: string;
 }
