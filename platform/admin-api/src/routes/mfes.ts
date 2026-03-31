@@ -187,6 +187,80 @@ router.post("/:id/versions", upload.single("bundle"), async (req, res) => {
   }
 });
 
+router.put("/:id/versions/:version", upload.single("bundle"), async (req, res) => {
+  let tmpDir: string | null = null;
+  try {
+    const mfe = await MFE.findOne({ _id: req.params.id, accountId: req.auth!.accountId });
+    if (!mfe) {
+      res.status(404).json({ error: "MFE not found" });
+      return;
+    }
+
+    const { version } = req.params;
+    const existing = await MFEVersion.findOne({ mfeId: mfe._id, version });
+    if (!existing) {
+      res.status(404).json({ error: `Version ${version} not found. Use POST to create it.` });
+      return;
+    }
+
+    if (!req.file) {
+      res.status(400).json({ error: "bundle file (tar.gz) is required" });
+      return;
+    }
+
+    tmpDir = await mkdtemp(join(tmpdir(), "lyx-redeploy-"));
+
+    await tar.extract({
+      file: req.file.path,
+      cwd: tmpDir,
+      filter: (path: string, entry: any) => {
+        if (path.includes("..")) return false;
+        if (entry.type === "SymbolicLink" || entry.type === "Link") return false;
+        return true;
+      },
+    });
+
+    const bundlePath = `${mfe.name}/${version}`;
+    let remoteEntryUrl = "";
+
+    async function uploadDir(dir: string, prefix: string) {
+      const entries = await readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name.startsWith("..") || entry.name.includes("\0")) continue;
+        const fullPath = join(dir, entry.name);
+        if (entry.isSymbolicLink()) continue;
+        if (entry.isDirectory()) {
+          await uploadDir(fullPath, `${prefix}/${entry.name}`);
+        } else {
+          const ext = extname(entry.name);
+          const contentType = CONTENT_TYPES[ext] ?? "application/octet-stream";
+          const buffer = await readFile(fullPath);
+          const objectName = `${prefix}/${entry.name}`;
+          const url = await uploadFile(objectName, buffer, contentType);
+
+          if (entry.name === "remoteEntry.js" || entry.name === "mf-manifest.json") {
+            remoteEntryUrl = url;
+          }
+        }
+      }
+    }
+
+    await uploadDir(tmpDir, bundlePath);
+
+    if (remoteEntryUrl) {
+      existing.remoteEntryUrl = remoteEntryUrl;
+      await existing.save();
+    }
+
+    res.json({ ...existing.toJSON(), redeployed: true });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  } finally {
+    if (tmpDir) await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+    if (req.file) await rm(req.file.path, { force: true }).catch(() => {});
+  }
+});
+
 router.put("/:id", async (req, res) => {
   try {
     const { description, archived } = req.body;

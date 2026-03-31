@@ -10,6 +10,7 @@ import { deployCommand } from "./commands/deploy";
 import { viewCommand } from "./commands/view";
 import { awsCommand } from "./commands/aws";
 import { testCommand } from "./commands/test";
+import { redeployCommand } from "./commands/redeploy";
 
 export function main() {
   const program = new Command();
@@ -27,6 +28,7 @@ export function main() {
   program.addCommand(publishCommand());
   program.addCommand(loginCommand());
   program.addCommand(deployCommand());
+  program.addCommand(redeployCommand());
   program.addCommand(viewCommand());
   program.addCommand(awsCommand());
   program.addCommand(testCommand());

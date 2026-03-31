@@ -15,3 +15,5 @@ tests/e2e/.auth/*.json
 playwright-report/
 test-results/
 tests/k6/results/
+platform/ssr/client
+platform/ssr/ssr
