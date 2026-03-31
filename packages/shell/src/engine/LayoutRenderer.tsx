@@ -56,11 +56,16 @@ export function LayoutRenderer({ layout, registryUrl }: LayoutRendererProps) {
     };
   }, [handleNavigate]);
 
-  const top = layout.regions.filter((r) => r.position === "top");
-  const left = layout.regions.filter((r) => r.position === "left");
-  const center = layout.regions.filter((r) => r.position === "center");
-  const right = layout.regions.filter((r) => r.position === "right");
-  const bottom = layout.regions.filter((r) => r.position === "bottom");
+  const regionVisible = (r: LayoutRegion) =>
+    slotOverrides[r.slot] || assigned.size === 0 || assigned.has(r.slot);
+
+  const top = layout.regions.filter((r) => r.position === "top" && regionVisible(r));
+  const left = layout.regions.filter((r) => r.position === "left" && regionVisible(r));
+  const center = layout.regions.filter((r) => r.position === "center" && regionVisible(r));
+  const right = layout.regions.filter((r) => r.position === "right" && regionVisible(r));
+  const bottom = layout.regions.filter((r) => r.position === "bottom" && regionVisible(r));
+
+  const middle = [...left, ...center, ...right];
 
   const middleColumns = [
     ...left.map((r) => r.size ?? "250px"),
@@ -80,7 +85,7 @@ export function LayoutRenderer({ layout, registryUrl }: LayoutRendererProps) {
         />
       ))}
 
-      {(left.length > 0 || center.length > 0 || right.length > 0) && (
+      {middle.length > 0 && (
         <div
           style={{
             display: "grid",
@@ -88,7 +93,7 @@ export function LayoutRenderer({ layout, registryUrl }: LayoutRendererProps) {
             flex: 1,
           }}
         >
-          {[...left, ...center, ...right].map((region) => (
+          {middle.map((region) => (
             <RegionSlot
               key={region.id}
               region={region}
