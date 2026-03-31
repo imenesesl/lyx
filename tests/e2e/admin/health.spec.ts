@@ -32,7 +32,7 @@ test.describe("Health Dashboard", () => {
 
       if (hasData) {
         await expect(adminPage.getByText("Tracked MFEs")).toBeVisible();
-        await expect(adminPage.getByText("Healthy", { exact: true })).toBeVisible();
+        await expect(adminPage.locator(".stat-label", { hasText: "Healthy" })).toBeVisible();
       } else {
         await expect(adminPage.getByText("No metrics yet")).toBeVisible();
       }
