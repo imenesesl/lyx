@@ -10,8 +10,8 @@ test.describe("Health Dashboard", () => {
       await adminPage.goto(`${ADMIN_URL}/admin/health`);
 
       await expect(adminPage.locator(".page-header h1")).toContainText("MFE Health");
-      await expect(adminPage.getByText("Dashboard")).toBeVisible();
-      await expect(adminPage.getByText("Logs")).toBeVisible();
+      await expect(adminPage.getByRole("button", { name: "Dashboard" })).toBeVisible();
+      await expect(adminPage.getByRole("button", { name: "Logs" })).toBeVisible();
 
       await expect(adminPage.getByRole("button", { name: "1h" })).toBeVisible();
       await expect(adminPage.getByRole("button", { name: "24h" })).toBeVisible();
@@ -32,7 +32,7 @@ test.describe("Health Dashboard", () => {
 
       if (hasData) {
         await expect(adminPage.getByText("Tracked MFEs")).toBeVisible();
-        await expect(adminPage.getByText("Healthy")).toBeVisible();
+        await expect(adminPage.getByText("Healthy", { exact: true })).toBeVisible();
       } else {
         await expect(adminPage.getByText("No metrics yet")).toBeVisible();
       }
@@ -55,7 +55,7 @@ test.describe("Health Dashboard", () => {
     }) => {
       await adminPage.goto(`${ADMIN_URL}/admin/health`);
 
-      await adminPage.getByText("Logs").click();
+      await adminPage.getByRole("button", { name: "Logs" }).click();
       await adminPage.waitForTimeout(500);
 
       const typeFilter = adminPage.locator(".select").filter({ hasText: "All types" });
@@ -70,7 +70,7 @@ test.describe("Health Dashboard", () => {
 
     test("filter logs by type triggers API call", async ({ adminPage }) => {
       await adminPage.goto(`${ADMIN_URL}/admin/health`);
-      await adminPage.getByText("Logs").click();
+      await adminPage.getByRole("button", { name: "Logs" }).click();
       await adminPage.waitForTimeout(500);
 
       const responsePromise = adminPage.waitForResponse(
@@ -87,7 +87,7 @@ test.describe("Health Dashboard", () => {
       adminPage,
     }) => {
       await adminPage.goto(`${ADMIN_URL}/admin/health`);
-      await adminPage.getByText("Logs").click();
+      await adminPage.getByRole("button", { name: "Logs" }).click();
       await adminPage.waitForTimeout(500);
 
       const mfeSelect = adminPage.locator(".select").nth(1);
@@ -108,7 +108,7 @@ test.describe("Health Dashboard", () => {
       adminPage,
     }) => {
       await adminPage.goto(`${ADMIN_URL}/admin/health`);
-      await adminPage.getByText("Logs").click();
+      await adminPage.getByRole("button", { name: "Logs" }).click();
       await adminPage.waitForTimeout(500);
 
       const searchInput = adminPage.getByPlaceholder("Search error messages...");

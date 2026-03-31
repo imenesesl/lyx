@@ -32,7 +32,7 @@ export class AppListPage {
   }
 
   async expectAppExists(name: string) {
-    await expect(this.page.getByText(name, { exact: false })).toBeVisible();
+    await expect(this.page.getByText(name, { exact: true }).first()).toBeVisible();
   }
 
   getAppCard(name: string): Locator {

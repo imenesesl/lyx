@@ -47,7 +47,6 @@ async function main() {
     max: 30,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.ip ?? req.headers["x-forwarded-for"]?.toString() ?? "unknown",
     message: { error: "Too many requests, please try again later" },
   });
 

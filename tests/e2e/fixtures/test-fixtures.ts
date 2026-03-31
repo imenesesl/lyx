@@ -64,6 +64,7 @@ export const test = base.extend<Fixtures>({
     }
 
     await use(page);
+    await page.unrouteAll({ behavior: "ignoreErrors" });
     await context.close();
   },
 

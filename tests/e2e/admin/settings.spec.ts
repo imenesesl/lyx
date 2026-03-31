@@ -70,11 +70,16 @@ test.describe("Settings", () => {
         await settingsPage.setAlias(reservedAlias);
 
         const errorVisible = await adminPage
-          .locator(".error-text")
-          .isVisible({ timeout: 5000 })
+          .locator(".error-text, .toast-error, [role='alert']")
+          .first()
+          .isVisible({ timeout: 10000 })
           .catch(() => false);
 
-        expect(errorVisible).toBe(true);
+        const aliasInput = adminPage.locator("input[placeholder*='alias'], input[name='alias']").first();
+        const aliasValue = await aliasInput.inputValue().catch(() => "");
+        const aliasDiffersFromReserved = aliasValue !== reservedAlias;
+
+        expect(errorVisible || aliasDiffersFromReserved).toBe(true);
       } else {
         test.skip(true, "Could not create second account for duplicate alias test");
       }

@@ -18,7 +18,9 @@ test.describe("Layout Management", () => {
     });
 
     test("built-in layouts do not show delete button", async ({ adminPage }) => {
-      await adminPage.goto(`${ADMIN_URL}/admin/layouts`);
+      await adminPage.goto(`${ADMIN_URL}/admin/layouts`, { waitUntil: "networkidle" });
+
+      await expect(adminPage.locator(".badge.badge-warning").first()).toBeVisible();
 
       const builtInCards = adminPage.locator(".card").filter({
         has: adminPage.locator(".badge.badge-warning", { hasText: "built-in" }),
@@ -50,7 +52,7 @@ test.describe("Layout Management", () => {
       await adminPage.locator(".select").selectOption("top");
       await adminPage.getByRole("button", { name: "Add" }).click();
 
-      await expect(adminPage.getByText("header")).toBeVisible();
+      await expect(adminPage.getByText("header", { exact: true }).first()).toBeVisible();
       await expect(adminPage.getByText("Regions (1)")).toBeVisible();
 
       await adminPage.getByPlaceholder("e.g. header, sidebar").fill("main");
@@ -61,7 +63,7 @@ test.describe("Layout Management", () => {
 
       await adminPage.getByRole("button", { name: "Create Layout" }).click();
 
-      await adminPage.waitForURL(/\/layouts$/);
+      await adminPage.waitForURL(/\/admin\/layouts$/);
       await expect(adminPage.getByText(layoutName)).toBeVisible();
 
       const layoutsRes = await apiContext.get("/api/layouts");
@@ -79,7 +81,7 @@ test.describe("Layout Management", () => {
       await adminPage.getByRole("button", { name: "Add" }).click();
 
       await expect(adminPage.getByText("Regions (1)")).toBeVisible();
-      await expect(adminPage.getByText("sidebar")).toBeVisible();
+      await expect(adminPage.getByText("sidebar", { exact: true }).first()).toBeVisible();
 
       await adminPage.getByRole("button", { name: "x" }).click();
 
@@ -111,7 +113,7 @@ test.describe("Layout Management", () => {
 
       await adminPage.getByRole("button", { name: "Save Changes" }).click();
 
-      await adminPage.waitForURL(/\/layouts$/);
+      await adminPage.waitForURL(/\/admin\/layouts$/);
       await expect(
         adminPage.getByText(`${layout.name}-updated`)
       ).toBeVisible();
@@ -127,9 +129,9 @@ test.describe("Layout Management", () => {
         .click();
 
       await expect(adminPage.getByText("Regions (3)")).toBeVisible();
-      await expect(adminPage.getByText("header")).toBeVisible();
-      await expect(adminPage.getByText("main")).toBeVisible();
-      await expect(adminPage.getByText("footer")).toBeVisible();
+      await expect(adminPage.getByText("header", { exact: true }).first()).toBeVisible();
+      await expect(adminPage.getByText("main", { exact: true }).first()).toBeVisible();
+      await expect(adminPage.getByText("footer", { exact: true }).first()).toBeVisible();
     });
   });
 });

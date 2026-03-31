@@ -6,7 +6,7 @@ const ADMIN_URL = process.env.ADMIN_URL ?? "http://localhost:4001";
 test.describe("Authentication", () => {
   test.describe("Login", () => {
     test("login with valid credentials navigates to dashboard", async ({ browser }) => {
-      const context = await browser.newContext();
+      const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
       const page = await context.newPage();
       const loginPage = new LoginPage(page);
       await loginPage.goto();
@@ -20,7 +20,7 @@ test.describe("Authentication", () => {
     });
 
     test("login with invalid credentials shows error", async ({ browser }) => {
-      const context = await browser.newContext();
+      const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
       const page = await context.newPage();
       const loginPage = new LoginPage(page);
       await loginPage.goto();
@@ -34,7 +34,7 @@ test.describe("Authentication", () => {
     });
 
     test("login with empty fields shows HTML validation", async ({ browser }) => {
-      const context = await browser.newContext();
+      const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
       const page = await context.newPage();
       const loginPage = new LoginPage(page);
       await loginPage.goto();
@@ -53,7 +53,7 @@ test.describe("Authentication", () => {
 
   test.describe("Registration", () => {
     test("register new account and redirect to dashboard", async ({ browser }) => {
-      const context = await browser.newContext();
+      const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
       const page = await context.newPage();
       await page.goto(`${ADMIN_URL}/admin/register`, { waitUntil: "networkidle" });
 
@@ -71,7 +71,7 @@ test.describe("Authentication", () => {
     });
 
     test("register with existing email shows error", async ({ browser }) => {
-      const context = await browser.newContext();
+      const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
       const page = await context.newPage();
       await page.goto(`${ADMIN_URL}/admin/register`, { waitUntil: "networkidle" });
 
@@ -88,7 +88,7 @@ test.describe("Authentication", () => {
 
   test.describe("Session", () => {
     test("unauthenticated access redirects to login", async ({ browser }) => {
-      const context = await browser.newContext();
+      const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
       const page = await context.newPage();
 
       await page.goto(`${ADMIN_URL}/admin`, { waitUntil: "networkidle" });
@@ -112,7 +112,7 @@ test.describe("Authentication", () => {
     });
 
     test("expired token redirects to login", async ({ browser }) => {
-      const context = await browser.newContext();
+      const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
       const page = await context.newPage();
 
       await page.goto(`${ADMIN_URL}/admin`, { waitUntil: "networkidle" });
