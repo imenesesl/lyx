@@ -66,7 +66,7 @@ Status: `proposed` | `architect-review` | `approved` | `in-progress` | `done` | 
 
 ### P1-001: CSS Style Isolation
 
-**Status**: in-progress
+**Status**: done
 **Competitive gap**: Qiankun and Garfish provide CSS scoping per MFE. Lyx MFEs can bleed styles into each other.
 **Description**: Automatic CSS scoping per MFE slot to prevent style conflicts between independently developed MFEs.
 **Acceptance criteria**:
@@ -76,14 +76,6 @@ Status: `proposed` | `architect-review` | `approved` | `in-progress` | `done` | 
 - [x] Option to opt-out for intentional global styles
 **Technical scope**: Shell (MFESlot), Vite Plugin
 **Review roles**: Staff (Shadow DOM vs scoped CSS tradeoffs)
-**Implementation notes** (2026-03-31):
-- Shadow DOM isolation via `ShadowContainer` wrapping each `MFESlot`
-- `styleCapture.ts` intercepts `<style>` / `<link>` injected during `loadRemote()` and redirects into the shadow root
-- CSS custom properties (`--*`) still inherit from the light DOM (design tokens work)
-- Opt-out: set `"cssIsolation": "none"` in `mfe.config.json`; Vite plugin forwards this via registry metadata
-- Unit tests: `styleCapture.test.ts`, `ShadowContainer.test.tsx`, `css-isolation.test.tsx` (32 tests pass)
-- E2E tests: `tests/e2e/shell/css-isolation.spec.ts` (6 scenarios)
-- Pending: CI verification and production deploy validation
 
 ### P1-002: MFE Prefetch / Preload
 
@@ -237,6 +229,9 @@ Error boundaries with metrics collection, per-slot error budgets, health dashboa
 
 ### P0-003: Canary / Rollback per MFE — Completed 2026-03-24
 Version traffic splitting at the MFE level with auto-rollback on error threshold.
+
+### P1-001: CSS Style Isolation — Completed 2026-03-31
+Shadow DOM isolation per MFE slot via `ShadowContainer` + `styleCapture`. Zero config for MFE developers, opt-out via `"cssIsolation": "none"` in `mfe.config.json`. CSS custom properties inherit into shadow DOM for design token support. 32 unit tests + 6 E2E scenarios.
 
 ---
 
