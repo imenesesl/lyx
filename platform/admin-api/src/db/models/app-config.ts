@@ -12,6 +12,8 @@ export interface ISlotAssignment {
 
 export interface ICanaryRule {
   slotId: string;
+  canaryMfeId: Types.ObjectId;
+  canaryMfeVersionId: Types.ObjectId;
   canaryMfeName: string;
   canaryMfeVersion: string;
   canaryRemoteEntryUrl: string;
@@ -60,6 +62,8 @@ const layoutRegionEmbedded = new Schema(
 const canaryRuleSchema = new Schema<ICanaryRule>(
   {
     slotId: { type: String, required: true },
+    canaryMfeId: { type: Schema.Types.ObjectId, ref: "MFE" },
+    canaryMfeVersionId: { type: Schema.Types.ObjectId, ref: "MFEVersion" },
     canaryMfeName: { type: String, required: true },
     canaryMfeVersion: { type: String, required: true },
     canaryRemoteEntryUrl: { type: String, required: true },

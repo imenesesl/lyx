@@ -91,13 +91,15 @@ router.post("/:appId/canary", async (req, res) => {
     const existing = (config.canaryRules ?? []).filter((r) => r.slotId !== slotId);
     existing.push({
       slotId,
+      canaryMfeId: (version.mfeId as any)._id ?? version.mfeId,
+      canaryMfeVersionId: version._id,
       canaryMfeName: (version.mfeId as any).name ?? assignment.mfeName,
       canaryMfeVersion: version.version,
       canaryRemoteEntryUrl: version.remoteEntryUrl,
       percentage: pct,
       errorThreshold: threshold,
       startedAt: new Date(),
-    });
+    } as any);
 
     config.canaryRules = existing;
     await config.save();
@@ -126,6 +128,12 @@ router.post("/:appId/canary/:slotId/promote", async (req, res) => {
 
     const assignment = config.assignments.find((a) => a.slotId === req.params.slotId);
     if (assignment) {
+      if ((rule as any).canaryMfeId) {
+        assignment.mfeId = (rule as any).canaryMfeId;
+      }
+      if ((rule as any).canaryMfeVersionId) {
+        assignment.mfeVersionId = (rule as any).canaryMfeVersionId;
+      }
       assignment.mfeName = rule.canaryMfeName;
       assignment.mfeVersion = rule.canaryMfeVersion;
       assignment.remoteEntryUrl = rule.canaryRemoteEntryUrl;
@@ -134,7 +142,10 @@ router.post("/:appId/canary/:slotId/promote", async (req, res) => {
     config.canaryRules = (config.canaryRules ?? []).filter((r) => r.slotId !== req.params.slotId);
     await config.save();
 
-    res.json({ message: `Canary promoted: ${rule.canaryMfeName}@${rule.canaryMfeVersion} is now stable on slot "${req.params.slotId}"` });
+    res.json({
+      message: `Canary promoted: ${rule.canaryMfeName}@${rule.canaryMfeVersion} is now stable on slot "${req.params.slotId}"`,
+      clearCookie: `lyx_canary_${app.slug}_${req.params.slotId}`,
+    });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }
@@ -159,7 +170,10 @@ router.post("/:appId/canary/:slotId/rollback", async (req, res) => {
     config.canaryRules = (config.canaryRules ?? []).filter((r) => r.slotId !== req.params.slotId);
     await config.save();
 
-    res.json({ message: `Canary rolled back on slot "${req.params.slotId}". Stable version restored.` });
+    res.json({
+      message: `Canary rolled back on slot "${req.params.slotId}". Stable version restored.`,
+      clearCookie: `lyx_canary_${app.slug}_${req.params.slotId}`,
+    });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }

@@ -46,6 +46,19 @@ function resolveCanary(
   return assignment;
 }
 
+function clearStaleCookie(req: Request, res: Response, slug: string, slotId: string) {
+  const cookieName = `lyx_canary_${slug}_${slotId}`;
+  const cookies = parseCookies(req);
+  if (cookies[cookieName]) {
+    res.appendHeader("Set-Cookie", cookie.serialize(cookieName, "", {
+      path: "/",
+      maxAge: 0,
+      httpOnly: false,
+      sameSite: "lax",
+    }));
+  }
+}
+
 function makeEntry(name: string, slot: string, version: string, remoteEntry: string, ts: number, isCanary = false) {
   return {
     name,
@@ -158,6 +171,8 @@ router.get("/:accountId/:slug/mfes", async (req, res) => {
             continue;
           }
         }
+      } else {
+        clearStaleCookie(req, res, req.params.slug, a.slotId);
       }
       entries.push(makeEntry(a.mfeName, a.slotId, a.mfeVersion, a.remoteEntryUrl, ts));
     }
@@ -203,6 +218,8 @@ router.get("/:accountId/:slug/mfes/slot/:slot", async (req, res) => {
           return;
         }
       }
+    } else {
+      clearStaleCookie(req, res, req.params.slug, req.params.slot);
     }
 
     res.json(makeEntry(assignment.mfeName, assignment.slotId, assignment.mfeVersion, assignment.remoteEntryUrl, ts));
