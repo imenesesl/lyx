@@ -8,6 +8,10 @@ description: >-
 
 # Lyx Infrastructure Expert
 
+## Single Resource Model
+
+Lyx uses a **single resource model**: local and production environments use the same cloud infrastructure. There are no local databases or storage services. Everything points to AWS S3 and MongoDB Atlas.
+
 ## Local AWS Credentials
 
 **ALWAYS verify before any AWS command**:
@@ -31,6 +35,7 @@ If expired → `lyx aws login`
 | Action | AWS creds needed? | File used |
 |--------|-------------------|-----------|
 | `lyx deploy` (MFE upload) | No | `~/.lyxrc` (Admin API token) |
+| `bash scripts/platform.sh up` | Yes | `~/.lyx-aws` (for S3 + MongoDB) |
 | `bash scripts/deploy-aws.sh` | Yes | `~/.lyx-aws` |
 | `bash scripts/ensure-infra.sh` | Yes | `~/.lyx-aws` |
 | `aws apprunner list-services` | Yes | `~/.lyx-aws` |
@@ -38,13 +43,15 @@ If expired → `lyx aws login`
 
 ## Local Stack (Docker Compose)
 
-`platform/docker-compose.yml` — 6 services:
+`platform/docker-compose.yml` — 4 services (all using cloud resources):
 - nginx (80) → reverse proxy
-- admin-api (4000) → Express + MongoDB + MinIO
+- admin-api (4000) → Express + MongoDB Atlas + S3
 - admin-ui (4001) → React SPA
-- ssr (4002) → Streaming SSR
-- mongodb (27017) → data
-- minio (9000/9001) → object storage
+- ssr (4002) → Streaming SSR + S3
+
+**Requirements to start**:
+1. `lyx aws login` — AWS credentials in `~/.lyx-aws`
+2. `MONGO_URI` set in `platform/.env`
 
 Start: `bash scripts/platform.sh up`
 
@@ -54,7 +61,7 @@ Start: `bash scripts/platform.sh up`
 |------|---------|
 | `/` | 302 → `/admin/` |
 | `/api/` | admin-api:4000 |
-| `/storage/` | minio:9000/lyx-bundles/ (with CORS, immutable cache) |
+| `/storage/` | ssr:4002 (fetches from S3) |
 | `/_assets/` | ssr:4002 (immutable cache) |
 | `/{accountId}/{slug}` | ssr:4002 (streaming, no buffering) |
 | `/admin/` | admin-ui:4001 (WebSocket support) |
@@ -73,6 +80,17 @@ Start: `bash scripts/platform.sh up`
 - **NEVER use public S3 URLs** — S3 blocks public access by default
 - `ensure-infra.sh` configures bucket policy as fallback
 
+### Admin API Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MONGO_URI` | Yes | MongoDB Atlas connection string |
+| `S3_BUCKET` | Yes | S3 bucket name for MFE bundles |
+| `AWS_REGION` | Yes | AWS region (default: `us-west-2`) |
+| `JWT_SECRET` | Yes | JWT signing secret |
+| `PORT` | No | Server port (default: `4000`) |
+| `CORS_ORIGIN` | No | CORS origin (default: `*`) |
+
 ## CI Pipeline (`ci.yml`)
 
 1. `build-and-test` — always runs (build 8 framework packages, lint 6, test 2)
@@ -83,7 +101,7 @@ Start: `bash scripts/platform.sh up`
 
 ## Key Scripts
 
-- `aws-login.sh`: Interactive credential setup. Saves to `~/.lyx-aws`. Validates with STS.
+- `platform.sh`: Start/stop local Docker services. Auto-loads `~/.lyx-aws`. Requires `MONGO_URI` in `platform/.env`.
 - `ensure-infra.sh`: Creates ECR, IAM roles (lyx-apprunner-ecr, lyx-apprunner-instance), S3. Disables Block Public Access and sets bucket policy on creation. Uses `::group::` for GH Actions.
 - `ensure-service.sh`: 5 args (name, image, port, env_json, needs_instance_role). Creates or updates.
 - `deploy-aws.sh`: Full deploy with secrets, IAM, S3, ECR, build, push, App Runner. Auto-loads `~/.lyx-aws`. Modes: deploy, update, status.

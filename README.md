@@ -10,15 +10,39 @@ A framework for building web applications with micro frontends. You write compon
 |------|---------|---------|
 | Node.js | 22+ | [nodejs.org](https://nodejs.org/) or `nvm use` (`.nvmrc` included) |
 | pnpm | 9+ | `npm install -g pnpm` |
-| Docker | Latest | [docker.com](https://www.docker.com/products/docker-desktop/) |
-| AWS CLI | Latest | [aws.amazon.com/cli](https://aws.amazon.com/cli/) (only for production) |
+| AWS CLI | Latest | [aws.amazon.com/cli](https://aws.amazon.com/cli/) |
+| Docker | Latest | [docker.com](https://www.docker.com/products/docker-desktop/) (optional, for local platform) |
 
 Verify:
 
 ```bash
 node --version     # v22.x.x+
 pnpm --version     # 9.x.x+
-docker --version   # any recent
+aws --version      # any recent
+```
+
+---
+
+## Architecture — Single Resource Model
+
+Lyx uses a **single resource model**: local and production environments share the same cloud infrastructure. There is no separate local database or storage layer.
+
+| Resource | Provider | Used by |
+|----------|----------|---------|
+| Database | MongoDB Atlas | Admin API (local + prod) |
+| MFE Bundles | AWS S3 | Admin API uploads, SSR serves |
+| Container Images | AWS ECR | CI/CD deploys |
+| Services | AWS App Runner | Production hosting |
+
+**Recommended setup**: two AWS accounts — one for dev, one for prod. Switch between them with `lyx aws login`.
+
+```
+Developer Machine                       AWS Account
+┌──────────────┐                 ┌────────────────────┐
+│  lyx CLI     │ ────deploy────► │  S3 (bundles)      │
+│  Admin API   │ ────connect───► │  MongoDB Atlas     │
+│  SSR Server  │ ────read──────► │  S3 (bundles)      │
+└──────────────┘                 └────────────────────┘
 ```
 
 ---
@@ -40,33 +64,40 @@ cd packages/cli && pnpm build && pnpm link --global && cd ../..
 lyx --help
 ```
 
-### 3. Start the local platform
+### 3. Set up cloud resources
+
+You need two things: an AWS account and a MongoDB Atlas database.
+
+#### MongoDB Atlas (free tier)
+
+1. Go to [cloud.mongodb.com](https://cloud.mongodb.com) → create account
+2. Create a **FREE M0 cluster** (choose your region)
+3. Create a database user (save username/password)
+4. **Network Access** → Add IP → Allow from Anywhere (`0.0.0.0/0`)
+5. **Database** → **Connect** → **Drivers** → copy the connection string
+
+#### AWS credentials
 
 ```bash
-bash scripts/platform.sh up
+lyx aws login
 ```
 
-| Service | URL |
-|---------|-----|
-| Admin UI | http://localhost/admin/ |
-| Your apps | http://localhost/{accountId}/{slug}/ |
-| MinIO Console | http://localhost:9001 (minioadmin/minioadmin) |
+It will prompt for `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and optionally `AWS_SESSION_TOKEN`. Credentials are saved to `~/.lyx-aws`.
 
-### 4. Create your account
-
-Open http://localhost/admin/ → click **Register** → enter name, email, password.
-
-### 5. Log in from the CLI
+### 4. Log in to the Lyx platform
 
 ```bash
+# First time — deploy the platform to AWS first (see "Deploying to AWS" below)
+# Then log in with your platform URL:
+lyx login -s https://YOUR-API-URL.awsapprunner.com
+
+# Or if running locally:
 lyx login
 ```
 
-For production:
+### 5. Create your account
 
-```bash
-lyx login -s https://YOUR-API-URL.awsapprunner.com
-```
+Open the Admin UI → click **Register** → enter name, email, password.
 
 ---
 
@@ -116,7 +147,7 @@ cd apps/my-project
 lyx deploy
 ```
 
-The CLI auto-detects MFEs, calculates versions, builds, and uploads.
+The CLI auto-detects MFEs, calculates versions, builds, and uploads to S3.
 
 ### Step 5 — Configure in the Admin UI
 
@@ -131,8 +162,8 @@ The CLI auto-detects MFEs, calculates versions, builds, and uploads.
 
 ### Step 6 — View your app
 
-- Local: `http://localhost/{accountId}/{slug}/`
 - Production: `https://SSR-URL.awsapprunner.com/{accountId}/{slug}/`
+- Local (with Docker): `http://localhost/{accountId}/{slug}/`
 
 ---
 
@@ -183,24 +214,29 @@ import { MFELoader } from "@lyx/sdk";
 
 ## Local Development
 
-### Option A — Fully local (recommended)
+### Option A — Run platform locally with Docker (pointing to cloud resources)
 
 ```bash
+# 1. Set up credentials
+lyx aws login                    # AWS credentials → ~/.lyx-aws
+# 2. Edit platform/.env with your MONGO_URI
+# 3. Start services
 bash scripts/platform.sh up
+# 4. Log in and deploy
 lyx login
 cd apps/my-project && lyx deploy
 ```
 
-Everything runs locally: MongoDB, MinIO, all services.
+All services run locally in Docker, but they use **your AWS S3 bucket** for storage and **your MongoDB Atlas** for the database.
 
-### Option B — Local code, deploy to production
+### Option B — Deploy directly to production
 
 ```bash
 lyx login -s https://YOUR-API-URL.awsapprunner.com
 cd apps/my-project && lyx deploy
 ```
 
-Code compiles locally, bundles upload to production.
+Code compiles locally, bundles upload directly to production S3.
 
 ### Publishing a new version
 
@@ -222,36 +258,16 @@ Then in Admin UI: select the new version → **Publish**.
 
 1. **AWS account** — [aws.amazon.com](https://aws.amazon.com/)
 2. **MongoDB Atlas** (free tier) — [cloud.mongodb.com](https://cloud.mongodb.com)
-   - Create a FREE M0 cluster
-   - Create a database user (save username/password)
-   - Network Access → Add IP → Allow from Anywhere (`0.0.0.0/0`)
-   - Database → Connect → Drivers → copy the connection string
 
-### Configure AWS credentials locally
+### Configure AWS credentials
 
 ```bash
 lyx aws login
 ```
 
-It will prompt for:
-- `AWS_ACCESS_KEY_ID` — from your IAM user (starts with `AKIA`) or SSO session (`ASIA`)
-- `AWS_SECRET_ACCESS_KEY` — the secret key
-- `AWS_SESSION_TOKEN` — only needed for SSO/temporary credentials (leave empty for IAM user keys)
-
-Credentials are stored in `~/.lyx-aws` (chmod 600). **All Lyx scripts auto-load this file**.
-
-To check if credentials are still valid:
-
-```bash
-lyx aws status
-```
-
-> **Note**: SSO session tokens expire after 1–12 hours. IAM user access keys don't expire. For local development, prefer IAM user keys. For CI/CD, use IAM user keys in GitHub Secrets.
-
 ### First deploy
 
 ```bash
-lyx aws login                       # set up credentials (once)
 export MONGO_URI="mongodb+srv://user:pass@cluster.mongodb.net/lyx"
 bash scripts/deploy-aws.sh deploy
 ```
@@ -266,8 +282,6 @@ bash scripts/deploy-aws.sh status    # show service URLs and status
 bash scripts/destroy-aws.sh          # tear down everything
 ```
 
-> All deploy scripts auto-load `~/.lyx-aws`. If credentials expired, run `lyx aws login` again.
-
 ### AWS Architecture
 
 ```
@@ -276,20 +290,20 @@ bash scripts/destroy-aws.sh          # tear down everything
                       │   admin-ui        │──── React SPA + API proxy
                       └──────────────────┘
                       ┌──────────────────┐
-   Users ─────────────│   App Runner      │──── Express + MongoDB + S3
+   Users ─────────────│   App Runner      │──── Express + MongoDB Atlas + S3
                       │   admin-api       │
                       └──────────────────┘
                       ┌──────────────────┐
-                      │   App Runner      │──── Streaming SSR + MFE loading
+                      │   App Runner      │──── Streaming SSR + S3 bundles
                       │   ssr             │
                       └──────────────────┘
                             │
-            ┌───────────────┼───────────────┐
-            │               │               │
-       ┌────┴────┐    ┌─────┴─────┐   ┌─────┴─────┐
-       │   S3    │    │  MongoDB  │   │    ECR    │
-       │ Bundles │    │  Atlas    │   │  Images   │
-       └─────────┘    └───────────┘   └───────────┘
+                ┌───────────┼───────────┐
+                │           │           │
+           ┌────┴────┐ ┌───┴─────┐ ┌───┴─────┐
+           │   S3    │ │ MongoDB │ │   ECR   │
+           │ Bundles │ │  Atlas  │ │ Images  │
+           └─────────┘ └─────────┘ └─────────┘
 ```
 
 ---
@@ -347,6 +361,21 @@ Go to GitHub → **Actions** → **CI** → **Run workflow** → triggers a full
 
 ---
 
+## Environment Setup Summary
+
+| What | How |
+|------|-----|
+| AWS credentials | `lyx aws login` → saved to `~/.lyx-aws` |
+| AWS credential check | `lyx aws status` |
+| Lyx platform login | `lyx login -s <url>` → saved to `~/.lyxrc` |
+| MongoDB Atlas | Set `MONGO_URI` in `platform/.env` or as env var |
+| S3 bucket | Auto-created by `deploy-aws.sh` or `ensure-infra.sh` |
+| Local platform | `bash scripts/platform.sh up` (requires `.env` + AWS creds) |
+
+**No local databases or storage services.** Everything points to your cloud resources.
+
+---
+
 ## CLI Reference
 
 | Command | Description |
@@ -358,7 +387,6 @@ Go to GitHub → **Actions** → **CI** → **Run workflow** → triggers a full
 | `lyx deploy --force` | Deploy without contract validation |
 | `lyx test` | Validate MFE event and shared state contracts |
 | `lyx test --json` | Output contract report as JSON |
-| Admin UI `/health` | Per-MFE health dashboard with error budgets |
 | `lyx login` | Log in to local platform |
 | `lyx login -s <url>` | Log in to a remote server |
 | `lyx view` | Open the app in the browser |
@@ -371,7 +399,7 @@ Go to GitHub → **Actions** → **CI** → **Run workflow** → triggers a full
 
 | Command | Description |
 |---------|-------------|
-| `bash scripts/platform.sh up` | Start local platform |
+| `bash scripts/platform.sh up` | Start local platform (Docker + cloud resources) |
 | `bash scripts/platform.sh down` | Stop local platform |
 | `bash scripts/platform.sh logs` | View service logs |
 | `bash scripts/deploy-aws.sh deploy` | First deploy to AWS |
@@ -401,10 +429,10 @@ lyx/
 │   ├── registry/            ← Local MFE dev server
 │   └── vite-plugin/         ← Auto Module Federation config
 ├── platform/
-│   ├── admin-api/           ← Express API + MongoDB + S3
+│   ├── admin-api/           ← Express API + MongoDB Atlas + S3
 │   ├── admin-ui/            ← React admin dashboard
 │   ├── ssr/                 ← Streaming SSR server
-│   └── nginx/               ← Reverse proxy (local only)
+│   └── nginx/               ← Reverse proxy (local Docker only)
 ├── scripts/
 │   ├── platform.sh          ← Local platform management
 │   ├── deploy-aws.sh        ← AWS deployment
@@ -417,7 +445,7 @@ lyx/
 │   └── roles.md             ← Role-based decision framework
 ├── .cursor/
 │   ├── rules/               ← AI agent conventions
-│   └── skills/              ← AI agent workflows
+│   └── skills/              ← AI agent expert workflows
 └── .github/workflows/ci.yml ← CI/CD pipeline
 ```
 
@@ -453,12 +481,13 @@ Each account gets a default ID (MongoDB ObjectId). You can set a custom alias in
 
 ```
 1. DevOps/Lead:
-   - Clone → deploy to AWS (once)
+   - Deploy platform to AWS (once): bash scripts/deploy-aws.sh deploy
    - Share URLs with the team
 
 2. Each Developer:
    - Clone → pnpm install → link CLI
-   - lyx login -s https://API-URL
+   - lyx aws login (AWS creds)
+   - lyx login -s https://API-URL (platform login)
    - lyx init my-feature → lyx create my-component --slot main
    - Edit code → lyx deploy
    - Admin UI: assign MFE → publish
@@ -495,20 +524,20 @@ git clone <repo> lyx && cd lyx
 pnpm install
 cd packages/cli && pnpm build && pnpm link --global && cd ../..
 
-# LOCAL
-bash scripts/platform.sh up
-lyx login
+# CREDENTIALS (once per AWS account)
+lyx aws login                            # AWS credentials → ~/.lyx-aws
+
+# FIRST DEPLOY (once)
+export MONGO_URI="mongodb+srv://..."
+bash scripts/deploy-aws.sh deploy
+
+# WORK
+lyx login -s https://API.awsapprunner.com
 lyx init my-project
 cd apps/my-project
 lyx create my-component --slot root
 cd ../.. && pnpm install
 cd apps/my-project && lyx deploy
 # Admin UI: create app → assign MFE → publish
-# http://localhost/{accountId}/{slug}/
-
-# PRODUCTION
-lyx aws login                            # configure AWS credentials (once)
-lyx login -s https://API.awsapprunner.com
-cd apps/my-project && lyx deploy
-# Admin UI: select version → publish
+# https://SSR-URL/{accountId}/{slug}/
 ```

@@ -254,7 +254,7 @@ deploy_services() {
   deploy_service "lyx-${ENV}-admin-api" \
     "${ECR_BASE}/lyx-${ENV}/admin-api:latest" \
     "4000" "1 vCPU" "2 GB" "/api/health" \
-    "{\"NODE_ENV\":\"production\",\"PORT\":\"4000\",\"MONGO_URI\":\"${MONGO_URI}\",\"MINIO_ENDPOINT\":\"s3\",\"MINIO_PORT\":\"443\",\"MINIO_ACCESS_KEY\":\"none\",\"MINIO_SECRET_KEY\":\"none\",\"MINIO_USE_SSL\":\"true\",\"MINIO_BUCKET\":\"${BUCKET_NAME}\",\"JWT_SECRET\":\"${JWT_SECRET}\",\"CORS_ORIGIN\":\"*\",\"AWS_REGION\":\"${REGION}\"}"
+    "{\"NODE_ENV\":\"production\",\"PORT\":\"4000\",\"MONGO_URI\":\"${MONGO_URI}\",\"S3_BUCKET\":\"${BUCKET_NAME}\",\"JWT_SECRET\":\"${JWT_SECRET}\",\"CORS_ORIGIN\":\"*\",\"AWS_REGION\":\"${REGION}\"}"
 
   log "Waiting for admin-api URL..."
   local API_URL=""

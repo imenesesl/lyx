@@ -24,9 +24,16 @@ services:
     build:
       context: ..
       dockerfile: platform/ssr/Dockerfile
+    env_file:
+      - .env
     environment:
       API_URL: http://admin-api:4000
       PORT: 4002
+      S3_BUCKET: ${S3_BUCKET:-lyx-bundles}
+      AWS_REGION: ${AWS_REGION:-us-west-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
     depends_on:
       admin-api:
         condition: service_healthy
@@ -44,47 +51,6 @@ services:
           cpus: "1"
           memory: 512M
 
-  mongodb:
-    image: mongo:7
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-}
-    volumes:
-      - mongo-data:/data/db
-    networks:
-      - lyx-network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 512M
-
-  minio:
-    image: minio/minio
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-lyxadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-lyxsecret}
-    volumes:
-      - minio-data:/data
-    networks:
-      - lyx-network
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 256M
-
   admin-api:
     build:
       context: ./admin-api
@@ -93,20 +59,15 @@ services:
       - .env
     environment:
       NODE_ENV: ${NODE_ENV:-development}
-      MONGO_URI: ${MONGO_URI:-mongodb://mongodb:27017/lyx}
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio}
-      MINIO_PORT: ${MINIO_PORT:-9000}
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-lyxadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-lyxsecret}
-      MINIO_BUCKET: ${MINIO_BUCKET:-lyx-bundles}
+      MONGO_URI: ${MONGO_URI}
+      S3_BUCKET: ${S3_BUCKET:-lyx-bundles}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      AWS_REGION: ${AWS_REGION:-us-west-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       PORT: 4000
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
     networks:
       - lyx-network
     healthcheck:
@@ -132,10 +93,6 @@ services:
         limits:
           cpus: "0.25"
           memory: 64M
-
-volumes:
-  mongo-data:
-  minio-data:
 
 networks:
   lyx-network:

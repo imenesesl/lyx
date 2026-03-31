@@ -51,7 +51,8 @@ bash scripts/platform.sh down    # stop everything
 bash scripts/platform.sh logs    # view logs
 ```
 
-Services: Admin API (4000), Admin UI (4001), SSR (4002), MongoDB (27017), MinIO (9000/9001), Nginx (80).
+Services: Admin API (4000), Admin UI (4001), SSR (4002), Nginx (80).
+All services use cloud resources (MongoDB Atlas + AWS S3) — no local databases or storage.
 
 ## Deploying MFEs (local code → production)
 

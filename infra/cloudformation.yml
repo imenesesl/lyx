@@ -48,17 +48,7 @@ Resources:
                 Value: "4000"
               - Name: MONGO_URI
                 Value: !Ref MongoUri
-              - Name: MINIO_ENDPOINT
-                Value: s3
-              - Name: MINIO_PORT
-                Value: "443"
-              - Name: MINIO_ACCESS_KEY
-                Value: none
-              - Name: MINIO_SECRET_KEY
-                Value: none
-              - Name: MINIO_USE_SSL
-                Value: "true"
-              - Name: MINIO_BUCKET
+              - Name: S3_BUCKET
                 Value: !Ref BucketName
               - Name: JWT_SECRET
                 Value: !Ref JwtSecret

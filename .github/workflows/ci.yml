@@ -259,12 +259,7 @@ jobs:
               NODE_ENV: "production",
               PORT: "4000",
               MONGO_URI: $mongo,
-              MINIO_ENDPOINT: "s3",
-              MINIO_PORT: "443",
-              MINIO_ACCESS_KEY: "none",
-              MINIO_SECRET_KEY: "none",
-              MINIO_USE_SSL: "true",
-              MINIO_BUCKET: $bucket,
+              S3_BUCKET: $bucket,
               JWT_SECRET: $jwt,
               CORS_ORIGIN: "*",
               AWS_REGION: $region

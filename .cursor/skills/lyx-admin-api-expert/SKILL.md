@@ -10,7 +10,7 @@ description: >-
 
 ## Route Map
 
-- `/api/health` — public, checks process + MongoDB + storage
+- `/api/health` — public, checks process + MongoDB + S3 storage
 - `/api/auth/*` — rate-limited (30/15min), JWT for /me and /alias
 - `/api/apps/*` — JWT required, scoped to `req.auth.accountId`
 - `/api/mfes/*` — JWT required, scoped to account
@@ -32,16 +32,31 @@ description: >-
 4. **MFE name uniqueness**: Global (not per-account) — two accounts cannot have same MFE name.
 5. **Version uniqueness**: `{ mfeId, version }` compound unique — rejects duplicate versions.
 
-## Storage
+## Storage — S3 Only
 
-- Detection: `MINIO_ENDPOINT === "s3"` → AWS S3; else → MinIO client
+The admin-api uses **AWS S3 exclusively** for MFE bundle storage. There is no local storage mode.
+
+- Config: `config.storage.bucket` (env: `S3_BUCKET`)
 - Upload: extracts tar.gz → stores each file under `{mfeName}/{version}/` with correct MIME
 - Public bucket policy: `s3:GetObject` for `*`
 - URL pattern: `/storage/{mfeName}/{version}/remoteEntry.js`
+- AWS region: `config.aws.region` (env: `AWS_REGION`)
+- Auth: uses IAM instance role (App Runner) or env credentials (local)
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MONGO_URI` | Yes | MongoDB Atlas connection string |
+| `S3_BUCKET` | Yes | S3 bucket name for MFE bundles |
+| `AWS_REGION` | Yes | AWS region (default: `us-west-2`) |
+| `JWT_SECRET` | Yes | JWT signing secret (fatal if insecure in production) |
+| `PORT` | No | Server port (default: `4000`) |
+| `CORS_ORIGIN` | No | CORS origin (default: `*`) |
+| `NODE_ENV` | No | `development` or `production` |
 
 ## Security
 
 - JWT expires in 7 days (`signToken`)
 - Production exits if `JWT_SECRET` is weak default
-- Production exits if MinIO credentials are defaults
 - Helmet + CORS configured

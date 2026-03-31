@@ -388,16 +388,16 @@ lyx deploy --canary 50 --app <appId>   # deploy and set 50% canary
 
 ## 10. Infrastructure
 
-### Local (Docker Compose)
+### Local (Docker Compose — uses cloud resources)
 
 | Service | Port | Role |
 |---------|------|------|
 | nginx | 80 | Reverse proxy, all routes |
-| admin-api | 4000 | Express API |
+| admin-api | 4000 | Express API (connects to MongoDB Atlas + S3) |
 | admin-ui | 4001 | React SPA |
-| ssr | 4002 | Streaming SSR |
-| mongodb | 27017 | Database |
-| minio | 9000/9001 | Object storage |
+| ssr | 4002 | Streaming SSR (reads from S3) |
+
+All services use the same MongoDB Atlas and AWS S3 as production. Configured via `platform/.env` + `~/.lyx-aws`.
 
 ### AWS (App Runner)
 
@@ -459,7 +459,7 @@ Runner: `tests/k6/run-k6.sh <scenario>` — accepts `api-load`, `ssr-load`, `con
 
 | Script | Purpose |
 |--------|---------|
-| `platform.sh` | Local Docker Compose management |
+| `platform.sh` | Local Docker platform (cloud-backed) |
 | `deploy-aws.sh` | Full AWS deployment (IAM, S3, ECR, App Runner) |
 | `destroy-aws.sh` | Tear down all AWS resources |
 | `ensure-infra.sh` | Idempotent infra creation for CI |

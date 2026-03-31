@@ -137,10 +137,10 @@ Lyx occupies a unique position in the micro frontend space: it is the only frame
 
 | Dimension | Assessment |
 |-----------|------------|
-| **Overlap** | Auth, database (PostgreSQL), storage, real-time subscriptions, edge functions — full BaaS alternative to Lyx's MongoDB + MinIO/S3 + custom JWT stack. |
+| **Overlap** | Auth, database (PostgreSQL), storage, real-time subscriptions, edge functions — full BaaS alternative to Lyx's MongoDB + S3 + custom JWT stack. |
 | **Strengths** | Massive developer adoption, excellent DX, self-hostable, built-in Row Level Security, real-time subscriptions, generous free tier, TypeScript SDK with auto-generated types. |
 | **Not a competitor because** | BaaS platform, not an MFE orchestration framework. No shell, no MFE routing, no layout engine, no Module Federation. |
-| **Why compatibility matters** | Teams already on Supabase would adopt Lyx faster if the platform could use Supabase Auth instead of custom JWT, Supabase Storage instead of S3/MinIO, and Supabase Database instead of MongoDB. Reduces infra setup from "Docker + Mongo + MinIO" to "connect your Supabase project." |
+| **Why compatibility matters** | Teams already on Supabase would adopt Lyx faster if the platform could use Supabase Auth instead of custom JWT, Supabase Storage instead of S3, and Supabase Database instead of MongoDB. Reduces infra setup to "connect your Supabase project." |
 | **Pricing** | Open source (MIT). Supabase Cloud free tier + Pro ($25/mo) + Team/Enterprise. |
 
 ### Backstage (Spotify)

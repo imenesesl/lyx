@@ -33,7 +33,7 @@ All architectural decisions follow this review process:
 ├────────────────┬────────────────┬───────────────┬──────────────┤
 │  admin-api     │  admin-ui      │  ssr          │  nginx       │
 │  Express+Mongo │  React SPA     │  Streaming    │  Reverse     │
-│  S3/MinIO      │  Dashboard     │  React SSR    │  Proxy       │
+│  S3 Storage    │  Dashboard     │  React SSR    │  Proxy       │
 │  JWT Auth      │  App Config    │  MFE Loading  │  (local)     │
 └────────────────┴────────────────┴───────────────┴──────────────┘
 ```

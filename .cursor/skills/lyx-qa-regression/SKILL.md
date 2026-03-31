@@ -149,7 +149,7 @@ Thresholds:
 - What happens with zero data (empty state in UI)?
 - What happens if the API is unreachable?
 - What happens if the user is not authenticated?
-- Does the feature work in both local Docker Compose and AWS production?
+- Does the feature work in both local and AWS production environments?
 
 ## Output Format
 

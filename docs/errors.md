@@ -255,3 +255,24 @@ When documenting a new error, use this template:
 **Fix**: Step-by-step solution with code if applicable
 **Prevention**: How to avoid this in the future
 ```
+
+---
+
+### Admin API fails to start — "MONGO_URI is not set"
+**Category**: Infra
+**Symptom**: Admin API exits immediately with `[FATAL] MONGO_URI is not set. Provide a MongoDB Atlas connection string.`
+**Cause**: Lyx uses a **single resource model** — there is no local MongoDB. The `MONGO_URI` env var must point to a MongoDB Atlas instance.
+**Fix**:
+1. Get a connection string from [cloud.mongodb.com](https://cloud.mongodb.com)
+2. Set it in `platform/.env`: `MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/lyx`
+**Prevention**: Always configure `platform/.env` before running `bash scripts/platform.sh up`
+
+### Storage operations fail — no S3 credentials
+**Category**: Infra
+**Symptom**: `AccessDenied` or `CredentialsProviderError` when uploading/reading MFE bundles
+**Cause**: Lyx uses AWS S3 for all MFE bundle storage (local and production). AWS credentials must be available.
+**Fix**:
+1. Run `lyx aws login` to set up credentials in `~/.lyx-aws`
+2. The Docker Compose services load these from `platform/.env`
+3. For local development, ensure `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are in `platform/.env`
+**Prevention**: Run `lyx aws status` before starting the platform
