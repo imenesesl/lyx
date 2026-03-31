@@ -62,7 +62,7 @@ function ClientMFESlot({
     let cancelled = false;
 
     async function load() {
-      const { init, loadRemote, registerRemotes } = await import("@module-federation/runtime");
+      const mf = await import("@module-federation/runtime");
 
       const target = overrideMfe ?? slot;
       if (loadedRef.current === target && Component) return;
@@ -91,7 +91,7 @@ function ClientMFESlot({
         mfeInfoRef.current = { name: entry.name, version: entry.version ?? "unknown" };
 
         const loadTimerWithVersion = startLoadTimer(entry.name, entry.version ?? "unknown", slot);
-        const comp = await loadMFEComponent(entry, { init, loadRemote, registerRemotes });
+        const comp = await loadMFEComponent(entry, mf);
 
         if (!cancelled && comp) {
           loadedRef.current = target;
@@ -184,13 +184,19 @@ function SlotPlaceholder({
 let runtimeInitialized = false;
 const registeredRemotes = new Map<string, string>();
 
+/** @internal test-only: reset shared state between test runs */
+export function __resetMFRuntime() {
+  runtimeInitialized = false;
+  registeredRemotes.clear();
+}
+
 function remoteKey(name: string, version: string): string {
   return `${name}_v${version.replace(/\./g, "_")}`;
 }
 
-async function loadMFEComponent(
+export async function loadMFEComponent(
   entry: MFERegistryEntry,
-  mf: { init: any; loadRemote: any; registerRemotes: any }
+  mf: typeof import("@module-federation/runtime")
 ): Promise<ComponentType<any> | null> {
   const { name, remoteEntry, version } = entry;
 
@@ -215,6 +221,28 @@ async function loadMFEComponent(
         },
       });
     } catch { /* already initialized */ }
+
+    try {
+      mf.registerShared({
+        react: {
+          version: React.version,
+          scope: "default",
+          get: async () => () => React,
+          lib: () => React,
+          shareConfig: { singleton: true, requiredVersion: `^${React.version}` },
+          loaded: true,
+        } as any,
+        "react-dom": {
+          version: (ReactDOM as any).version ?? React.version,
+          scope: "default",
+          get: async () => () => ReactDOM,
+          lib: () => ReactDOM,
+          shareConfig: { singleton: true, requiredVersion: `^${React.version}` },
+          loaded: true,
+        } as any,
+      });
+    } catch { /* already registered */ }
+
     runtimeInitialized = true;
   }
 

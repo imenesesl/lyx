@@ -15,10 +15,10 @@
     "test": "vitest run --config vitest.test.config.ts"
   },
   "dependencies": {
-    "@lyx/types": "workspace:*",
     "@lyx/sdk": "workspace:*",
+    "@lyx/types": "workspace:*",
     "@lyx/vite-plugin": "workspace:*",
-    "@module-federation/runtime": "^2.2.0",
+    "@module-federation/runtime": "2.3.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

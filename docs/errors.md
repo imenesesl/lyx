@@ -276,3 +276,15 @@ When documenting a new error, use this template:
 2. The Docker Compose services load these from `platform/.env`
 3. For local development, ensure `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are in `platform/.env`
 **Prevention**: Run `lyx aws status` before starting the platform
+
+### MFE crashes with "Cannot read properties of null (reading 'useState')"
+**Category**: Runtime
+**Symptom**: MFEs fail to render, console shows `TypeError: Cannot read properties of null (reading 'useState')` inside the MFE's bundled React. Error cascade shows `[lyx] MFE crashed` and React error #418 (hydration mismatch).
+**Cause**: Duplicate React instances. The MFE bundles their own copy of React via `@module-federation/vite`'s `shared` config (`loadShare` mechanism), but the host Shell was built with `shared: {}` — meaning the host never registers React in the shared scope at build time. When the MFE's runtime `loadShare('react')` executes, it falls back to the MFE's own bundled React instead of the host's. Two React instances = hooks fail.
+**Fix** (two-part):
+1. **Runtime registration**: In `MFESlot.tsx`, call both `mf.init()` with `lib: () => React` and `mf.registerShared()` with `loaded: true` + `get: async () => () => React` to ensure the host's React is available in the shared scope before any MFE loads.
+2. **Runtime version alignment**: Ensure `@module-federation/runtime` in the Shell matches the version embedded by `@module-federation/vite` in MFE bundles (both must be `2.3.0`). Version mismatch between the host runtime and the embedded remote runtime causes share negotiation failures.
+**Prevention**:
+- Keep `@module-federation/runtime` version in `packages/shell/package.json` aligned with `@module-federation/vite`'s dependency (`node_modules/@module-federation/vite/package.json` → `dependencies["@module-federation/runtime"]`).
+- After upgrading `@module-federation/vite`, always check and update the Shell's runtime dependency.
+- The host's `shared: {}` in the `federation()` build config is intentional — adding `react` to it triggers the `$m is not defined` bug where the Vite plugin incorrectly transforms React's CommonJS internals.

@@ -182,8 +182,8 @@ importers:
         specifier: workspace:*
         version: link:../vite-plugin
       '@module-federation/runtime':
-        specifier: ^2.2.0
-        version: 2.2.3
+        specifier: 2.3.0
+        version: 2.3.0
       react:
         specifier: ^19.1.0
         version: 19.2.4
@@ -1086,34 +1086,17 @@ packages:
       vue-tsc:
         optional: true
 
-  '@module-federation/error-codes@2.2.3':
-    resolution: {integrity: sha512-3+qOylnuljh1XulzXd3iNhALXuVXPVGFUupz9qnUL1paWX48F89Wex3egu6psZhxi3F7y7TA7ykjfWpP0vlrjQ==}
-
   '@module-federation/error-codes@2.3.0':
     resolution: {integrity: sha512-O8jXi0Wv/dFc7BkJkFC0SlW8dT0OjOWvBHakVaOAKVlAKNuQBXfZzLe48bIYAvMhPe0lFppyWoN/SyuIfVBvkg==}
 
   '@module-federation/managers@2.3.0':
     resolution: {integrity: sha512-LDPzSJV4RvGDABkhwwNYUVWakbfHDySHDoEJIlc6KhvdwUlivtn90Ay7uNIdz9FhhGeb338io87IctfxquSqWQ==}
 
-  '@module-federation/runtime-core@2.2.3':
-    resolution: {integrity: sha512-muGMkv1AQIkCQy8mIa6lmgHu3qTasl/se+bZHERulD3gddK6ninM/Hc7mHyUVNO9rVhb+5Fv7QiCYahH4pRrIg==}
-
   '@module-federation/runtime-core@2.3.0':
     resolution: {integrity: sha512-OvBNIAGM7Xj0dUOBG5jx7zuZaRLDHb5Wcb7pstwqJo5WYqj7gzA9X+QmI+jsQ9jY74Nlfx9vrvW6LlHukIRH/A==}
 
-  '@module-federation/runtime@2.2.3':
-    resolution: {integrity: sha512-5xAIPhzNPLXL7J61ZJxNiM+kpKfKw2IKf4oAT1KFVxntZnnWZiZFAkzTeRiNlfIjwbgasKqBoARTLbu1GEaydA==}
-
   '@module-federation/runtime@2.3.0':
     resolution: {integrity: sha512-9vv0Ah8Tg3E5mBlj29n1boN0bPKbqhw7QBWZCDm2Mou0uXb8x/ycgFR1EPq937LCScBUl0LiFp53KSjeyT75aQ==}
-
-  '@module-federation/sdk@2.2.3':
-    resolution: {integrity: sha512-DUXqwxQRqxlBz7XWW5mEsdTvYEZPWVAgwfh9JtLW1fkxfdG+Czzzs1sXGz8MPF76H3PGzbRdzeCEfiANlANWiw==}
-    peerDependencies:
-      node-fetch: ^3.3.2
-    peerDependenciesMeta:
-      node-fetch:
-        optional: true
 
   '@module-federation/sdk@2.3.0':
     resolution: {integrity: sha512-xj90q4eILkFA1J30wVQYEIWAEh39tfLbCIw1dz3QXUL2TtD/h19H1rZlRkrtAyUxV6xKjp17EMkyGSHzstf1OA==}
@@ -4823,8 +4806,6 @@ snapshots:
       - node-fetch
       - utf-8-validate
 
-  '@module-federation/error-codes@2.2.3': {}
-
   '@module-federation/error-codes@2.3.0': {}
 
   '@module-federation/managers@2.3.0':
@@ -4835,25 +4816,10 @@ snapshots:
     transitivePeerDependencies:
       - node-fetch
 
-  '@module-federation/runtime-core@2.2.3':
-    dependencies:
-      '@module-federation/error-codes': 2.2.3
-      '@module-federation/sdk': 2.2.3
-    transitivePeerDependencies:
-      - node-fetch
-
   '@module-federation/runtime-core@2.3.0':
     dependencies:
       '@module-federation/error-codes': 2.3.0
       '@module-federation/sdk': 2.3.0
-    transitivePeerDependencies:
-      - node-fetch
-
-  '@module-federation/runtime@2.2.3':
-    dependencies:
-      '@module-federation/error-codes': 2.2.3
-      '@module-federation/runtime-core': 2.2.3
-      '@module-federation/sdk': 2.2.3
     transitivePeerDependencies:
       - node-fetch
 
@@ -4864,8 +4830,6 @@ snapshots:
       '@module-federation/sdk': 2.3.0
     transitivePeerDependencies:
       - node-fetch
-
-  '@module-federation/sdk@2.2.3': {}
 
   '@module-federation/sdk@2.3.0': {}
 
