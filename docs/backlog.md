@@ -1,7 +1,7 @@
 # Lyx Product Backlog
 
 > Owned by: **Product Owner**
-> Last updated: 2026-03-24
+> Last updated: 2026-03-31
 > Source: [docs/competitive-analysis.md](competitive-analysis.md)
 
 ---
@@ -66,16 +66,24 @@ Status: `proposed` | `architect-review` | `approved` | `in-progress` | `done` | 
 
 ### P1-001: CSS Style Isolation
 
-**Status**: proposed
+**Status**: in-progress
 **Competitive gap**: Qiankun and Garfish provide CSS scoping per MFE. Lyx MFEs can bleed styles into each other.
 **Description**: Automatic CSS scoping per MFE slot to prevent style conflicts between independently developed MFEs.
 **Acceptance criteria**:
-- MFE styles are scoped to their slot container (no global leakage)
-- Supports both inline styles and external CSS files
-- Zero config for MFE developers (automatic in Shell)
-- Option to opt-out for intentional global styles
+- [x] MFE styles are scoped to their slot container (no global leakage)
+- [x] Supports both inline styles and external CSS files
+- [x] Zero config for MFE developers (automatic in Shell)
+- [x] Option to opt-out for intentional global styles
 **Technical scope**: Shell (MFESlot), Vite Plugin
 **Review roles**: Staff (Shadow DOM vs scoped CSS tradeoffs)
+**Implementation notes** (2026-03-31):
+- Shadow DOM isolation via `ShadowContainer` wrapping each `MFESlot`
+- `styleCapture.ts` intercepts `<style>` / `<link>` injected during `loadRemote()` and redirects into the shadow root
+- CSS custom properties (`--*`) still inherit from the light DOM (design tokens work)
+- Opt-out: set `"cssIsolation": "none"` in `mfe.config.json`; Vite plugin forwards this via registry metadata
+- Unit tests: `styleCapture.test.ts`, `ShadowContainer.test.tsx`, `css-isolation.test.tsx` (32 tests pass)
+- E2E tests: `tests/e2e/shell/css-isolation.spec.ts` (6 scenarios)
+- Pending: CI verification and production deploy validation
 
 ### P1-002: MFE Prefetch / Preload
 
@@ -223,6 +231,12 @@ Status: `proposed` | `architect-review` | `approved` | `in-progress` | `done` | 
 
 ### P0-001: MFE Contract Testing — Completed 2026-03-24
 Automated validation of MFE event and shared state contracts via `lyx test` and `lyx deploy`.
+
+### P0-002: Per-MFE Observability — Completed 2026-03-24
+Error boundaries with metrics collection, per-slot error budgets, health dashboard in Admin UI.
+
+### P0-003: Canary / Rollback per MFE — Completed 2026-03-24
+Version traffic splitting at the MFE level with auto-rollback on error threshold.
 
 ---
 

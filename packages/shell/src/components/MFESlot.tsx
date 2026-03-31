@@ -19,8 +19,12 @@ interface ShareArgs {
 }
 import { ErrorBoundary } from "./ErrorBoundary";
 import { SlotSkeleton } from "./SlotSkeleton";
+import { ShadowContainer } from "./ShadowContainer";
+import { startStyleCapture, type CapturedStyles } from "./styleCapture";
 
 const isServer = typeof window === "undefined";
+
+type CssIsolationMode = "shadow" | "none";
 
 interface MFESlotProps {
   slot: string;
@@ -67,11 +71,13 @@ function ClientMFESlot({
   overrideMfe,
   overrideParams,
 }: MFESlotProps) {
-  const [Component, setComponent] = useState<ComponentType<any> | null>(null);
+  const [Component, setComponent] = useState<ComponentType<Record<string, unknown>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadedRef = useRef<string>("");
   const mfeInfoRef = useRef<{ name: string; version: string }>({ name: "", version: "" });
+  const [capturedStyles, setCapturedStyles] = useState<CapturedStyles>({ css: [], links: [] });
+  const [isolationMode, setIsolationMode] = useState<CssIsolationMode>("shadow");
 
   useEffect(() => {
     let cancelled = false;
@@ -106,8 +112,18 @@ function ClientMFESlot({
         const entry: MFERegistryEntry = await res.json();
         mfeInfoRef.current = { name: entry.name, version: entry.version ?? "unknown" };
 
+        const isolation = resolveCssIsolation(entry);
+        if (!cancelled) setIsolationMode(isolation);
+
+        const capture = isolation === "shadow" ? startStyleCapture() : null;
+
         const loadTimerWithVersion = startLoadTimer(entry.name, entry.version ?? "unknown", slot);
         const comp = await loadMFEComponent(entry, mf);
+
+        if (capture) {
+          const styles = capture.stop();
+          if (!cancelled) setCapturedStyles(styles);
+        }
 
         if (!cancelled && comp) {
           loadedRef.current = target;
@@ -151,7 +167,7 @@ function ClientMFESlot({
     reportRenderError(info.name || slot, info.version || "unknown", slot, err.message);
   };
 
-  return (
+  const mfeContent = (
     <ErrorBoundary
       fallback={<SlotPlaceholder slot={slot} state="crashed" />}
       onError={onCrash}
@@ -161,6 +177,25 @@ function ClientMFESlot({
       </Suspense>
     </ErrorBoundary>
   );
+
+  if (isolationMode === "shadow") {
+    return (
+      <ShadowContainer
+        styles={capturedStyles.css}
+        styleLinks={capturedStyles.links}
+      >
+        {mfeContent}
+      </ShadowContainer>
+    );
+  }
+
+  return mfeContent;
+}
+
+function resolveCssIsolation(entry: MFERegistryEntry): CssIsolationMode {
+  const raw = entry.metadata?.cssIsolation;
+  if (raw === "none") return "none";
+  return "shadow";
 }
 
 function SlotPlaceholder({
@@ -172,7 +207,7 @@ function SlotPlaceholder({
   state: "empty" | "error" | "crashed";
   message?: string;
 }) {
-  const colors = {
+  const colors: Record<string, string> = {
     empty: "#fafafa",
     error: "#fff0f0",
     crashed: "#fff0f0",

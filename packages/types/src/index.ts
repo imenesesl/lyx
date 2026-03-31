@@ -1,4 +1,4 @@
-export type { MFEConfig } from "./mfe-config";
+export type { MFEConfig, CssIsolationMode } from "./mfe-config";
 export type { Layout, LayoutRegion, LayoutPosition } from "./layout";
 export type {
   MFERegistryEntry,

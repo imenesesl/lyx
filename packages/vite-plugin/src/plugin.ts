@@ -53,6 +53,9 @@ export function lyxPlugin(options: LyxPluginOptions = {}): Plugin[] {
           version: mfeConfig.version ?? "0.0.0-dev",
           remoteEntry: `http://localhost:${port}/remoteEntry.js`,
           timestamp: Date.now(),
+          metadata: {
+            cssIsolation: mfeConfig.cssIsolation ?? "shadow",
+          },
         }).catch(() => {
           /* registry may not be running yet */
         });
@@ -88,6 +91,7 @@ async function registerWithRegistry(
     version: string;
     remoteEntry: string;
     timestamp: number;
+    metadata?: Record<string, unknown>;
   }
 ): Promise<void> {
   const response = await fetch(`${url}/register`, {
