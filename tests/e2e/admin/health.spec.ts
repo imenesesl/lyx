@@ -7,7 +7,7 @@ test.describe("Health Dashboard", () => {
     test("health page loads with tabs and time window buttons", async ({
       adminPage,
     }) => {
-      await adminPage.goto(`${ADMIN_URL}/health`);
+      await adminPage.goto(`${ADMIN_URL}/admin/health`);
 
       await expect(adminPage.locator(".page-header h1")).toContainText("MFE Health");
       await expect(adminPage.getByText("Dashboard")).toBeVisible();
@@ -19,7 +19,7 @@ test.describe("Health Dashboard", () => {
     });
 
     test("metrics tab shows MFE stats or empty state", async ({ adminPage }) => {
-      await adminPage.goto(`${ADMIN_URL}/health`);
+      await adminPage.goto(`${ADMIN_URL}/admin/health`);
       await adminPage.waitForTimeout(1000);
 
       const emptyState = adminPage.locator(".empty-state");
@@ -39,7 +39,7 @@ test.describe("Health Dashboard", () => {
     });
 
     test("switching time window reloads data", async ({ adminPage }) => {
-      await adminPage.goto(`${ADMIN_URL}/health`);
+      await adminPage.goto(`${ADMIN_URL}/admin/health`);
 
       const responsePromise = adminPage.waitForResponse(
         (res) => res.url().includes("/metrics/health") && res.status() === 200
@@ -53,7 +53,7 @@ test.describe("Health Dashboard", () => {
     test("logs tab shows filterable log entries or empty state", async ({
       adminPage,
     }) => {
-      await adminPage.goto(`${ADMIN_URL}/health`);
+      await adminPage.goto(`${ADMIN_URL}/admin/health`);
 
       await adminPage.getByText("Logs").click();
       await adminPage.waitForTimeout(500);
@@ -69,7 +69,7 @@ test.describe("Health Dashboard", () => {
     });
 
     test("filter logs by type triggers API call", async ({ adminPage }) => {
-      await adminPage.goto(`${ADMIN_URL}/health`);
+      await adminPage.goto(`${ADMIN_URL}/admin/health`);
       await adminPage.getByText("Logs").click();
       await adminPage.waitForTimeout(500);
 
@@ -86,7 +86,7 @@ test.describe("Health Dashboard", () => {
     test("filter logs by MFE name triggers API call", async ({
       adminPage,
     }) => {
-      await adminPage.goto(`${ADMIN_URL}/health`);
+      await adminPage.goto(`${ADMIN_URL}/admin/health`);
       await adminPage.getByText("Logs").click();
       await adminPage.waitForTimeout(500);
 
@@ -107,7 +107,7 @@ test.describe("Health Dashboard", () => {
     test("search logs triggers API call with search param", async ({
       adminPage,
     }) => {
-      await adminPage.goto(`${ADMIN_URL}/health`);
+      await adminPage.goto(`${ADMIN_URL}/admin/health`);
       await adminPage.getByText("Logs").click();
       await adminPage.waitForTimeout(500);
 

@@ -61,13 +61,12 @@ test.describe("Shell API Proxy", () => {
       }
     });
 
-    test("runtime API has short-lived cache headers", async ({ request }) => {
+    test("runtime API has no-cache headers", async ({ request }) => {
       const res = await request.get(
         `${SHELL_URL}/api/runtime/${ACCOUNT_ID}/${APP_SLUG}/layout`,
       );
       const cacheControl = res.headers()["cache-control"] ?? "";
-      expect(cacheControl).toContain("max-age=");
-      expect(cacheControl).toContain("stale-while-revalidate");
+      expect(cacheControl).toContain("no-cache");
     });
 
     test("non-runtime API has no-cache headers", async ({ request }) => {

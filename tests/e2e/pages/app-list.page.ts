@@ -14,14 +14,15 @@ export class AppListPage {
   }
 
   async goto() {
-    await this.page.goto("/apps");
+    const adminUrl = process.env.ADMIN_URL ?? "http://localhost:4001";
+    await this.page.goto(`${adminUrl}/admin/apps`);
   }
 
   async createApp(name: string, layoutIndex = 0) {
     await this.newAppButton.click();
     await expect(this.createModal).toBeVisible();
 
-    await this.createModal.getByLabel("Name").fill(name);
+    await this.createModal.getByPlaceholder("My Awesome App").fill(name);
 
     const layoutCards = this.createModal.locator(".grid .card");
     await layoutCards.nth(layoutIndex).click();

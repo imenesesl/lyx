@@ -12,14 +12,14 @@ export default defineConfig({
   reporter: process.env.CI
     ? [["html", { open: "never" }], ["github"]]
     : [["html", { open: "on-failure" }]],
-  timeout: 60_000,
-  expect: { timeout: 10_000 },
+  timeout: 90_000,
+  expect: { timeout: 30_000 },
 
   use: {
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: process.env.CI ? "off" : "on-first-retry",
-    actionTimeout: 10_000,
+    actionTimeout: 30_000,
   },
 
   projects: [

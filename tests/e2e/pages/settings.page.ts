@@ -27,7 +27,8 @@ export class SettingsPage {
   }
 
   async goto() {
-    await this.page.goto("/settings");
+    const adminUrl = process.env.ADMIN_URL ?? "http://localhost:4001";
+    await this.page.goto(`${adminUrl}/admin/settings`);
   }
 
   async setAlias(alias: string) {

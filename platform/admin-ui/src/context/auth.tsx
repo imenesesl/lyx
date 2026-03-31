@@ -25,15 +25,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      api
-        .get<Account>("/auth/me")
-        .then(setAccount)
-        .catch(() => clearToken())
-        .finally(() => setLoading(false));
-    } else {
+    if (!isAuthenticated()) {
       setLoading(false);
+      return;
     }
+
+    let cancelled = false;
+
+    const fetchMe = async (): Promise<void> => {
+      const maxAttempts = 3;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          const data = await api.get<Account>("/auth/me");
+          if (!cancelled) setAccount(data);
+          return;
+        } catch {
+          if (attempt < maxAttempts - 1) {
+            await new Promise<void>((r) => setTimeout(r, 1000 * (attempt + 1)));
+          }
+        }
+      }
+    };
+
+    fetchMe().finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function login(email: string, password: string) {

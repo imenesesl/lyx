@@ -4,7 +4,7 @@ const ADMIN_URL = process.env.ADMIN_URL ?? "http://localhost:4001";
 
 test.describe("Canary Deployments", () => {
   test("canary tab visible on app detail", async ({ adminPage, testApp }) => {
-    await adminPage.goto(`${ADMIN_URL}/apps/${testApp._id}`);
+    await adminPage.goto(`${ADMIN_URL}/admin/apps/${testApp._id}`);
 
     const canaryTab = adminPage.locator(".tab", { hasText: "Canary" });
     await expect(canaryTab).toBeVisible();
@@ -109,7 +109,7 @@ test.describe("Canary Deployments", () => {
     test("create canary rule from UI", async ({ adminPage }) => {
       test.skip(!versionIdV2, "Need 2 MFE versions to create canary");
 
-      await adminPage.goto(`${ADMIN_URL}/apps/${appId}`);
+      await adminPage.goto(`${ADMIN_URL}/admin/apps/${appId}`);
       await adminPage.locator(".tab", { hasText: "Canary" }).click();
       await adminPage.waitForTimeout(500);
 
@@ -153,7 +153,7 @@ test.describe("Canary Deployments", () => {
         data: { slotId, mfeVersionId: versionIdV2, percentage: 10 },
       });
 
-      await adminPage.goto(`${ADMIN_URL}/apps/${appId}`);
+      await adminPage.goto(`${ADMIN_URL}/admin/apps/${appId}`);
       await adminPage.locator(".tab", { hasText: "Canary" }).click();
       await adminPage.waitForTimeout(500);
 
@@ -183,7 +183,7 @@ test.describe("Canary Deployments", () => {
         data: { slotId, mfeVersionId: versionIdV2, percentage: 10 },
       });
 
-      await adminPage.goto(`${ADMIN_URL}/apps/${appId}`);
+      await adminPage.goto(`${ADMIN_URL}/admin/apps/${appId}`);
       await adminPage.locator(".tab", { hasText: "Canary" }).click();
       await adminPage.waitForTimeout(500);
 

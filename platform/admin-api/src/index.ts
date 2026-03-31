@@ -42,11 +42,12 @@ async function main() {
 
   app.use(express.json({ limit: "10mb" }));
 
-  const authLimiter = rateLimit({
+  const credentialLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 30,
     standardHeaders: true,
     legacyHeaders: false,
+    keyGenerator: (req) => req.ip ?? req.headers["x-forwarded-for"]?.toString() ?? "unknown",
     message: { error: "Too many requests, please try again later" },
   });
 
@@ -74,7 +75,9 @@ async function main() {
     });
   });
 
-  app.use("/api/auth", authLimiter, authRoutes);
+  app.use("/api/auth/login", credentialLimiter);
+  app.use("/api/auth/register", credentialLimiter);
+  app.use("/api/auth", authRoutes);
   app.use("/api/apps", appsRoutes);
   app.use("/api/mfes", mfesRoutes);
   app.use("/api/layouts", layoutsRoutes);

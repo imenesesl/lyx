@@ -11,14 +11,14 @@ interface LayoutListItem {
 test.describe("Layout Management", () => {
   test.describe("Layout List", () => {
     test("layouts page lists built-in templates", async ({ adminPage }) => {
-      await adminPage.goto(`${ADMIN_URL}/layouts`);
+      await adminPage.goto(`${ADMIN_URL}/admin/layouts`);
 
       await expect(adminPage.locator(".page-header h1")).toContainText("Layouts");
       await expect(adminPage.locator(".badge.badge-warning").first()).toContainText("built-in");
     });
 
     test("built-in layouts do not show delete button", async ({ adminPage }) => {
-      await adminPage.goto(`${ADMIN_URL}/layouts`);
+      await adminPage.goto(`${ADMIN_URL}/admin/layouts`);
 
       const builtInCards = adminPage.locator(".card").filter({
         has: adminPage.locator(".badge.badge-warning", { hasText: "built-in" }),
@@ -38,13 +38,13 @@ test.describe("Layout Management", () => {
 
   test.describe("Layout Builder", () => {
     test("create custom layout with regions", async ({ adminPage, apiContext }) => {
-      await adminPage.goto(`${ADMIN_URL}/layouts/new`);
+      await adminPage.goto(`${ADMIN_URL}/admin/layouts/new`);
 
       await expect(adminPage.locator(".page-header h1")).toContainText("Create Layout");
 
       const layoutName = `e2e-layout-${Date.now()}`;
-      await adminPage.getByLabel("Name").fill(layoutName);
-      await adminPage.getByLabel("Description").fill("E2E test layout");
+      await adminPage.getByPlaceholder("e.g. My Custom Layout").fill(layoutName);
+      await adminPage.getByPlaceholder("Optional description").first().fill("E2E test layout");
 
       await adminPage.getByPlaceholder("e.g. header, sidebar").fill("header");
       await adminPage.locator(".select").selectOption("top");
@@ -73,7 +73,7 @@ test.describe("Layout Management", () => {
     });
 
     test("add and remove regions in layout builder", async ({ adminPage }) => {
-      await adminPage.goto(`${ADMIN_URL}/layouts/new`);
+      await adminPage.goto(`${ADMIN_URL}/admin/layouts/new`);
 
       await adminPage.getByPlaceholder("e.g. header, sidebar").fill("sidebar");
       await adminPage.getByRole("button", { name: "Add" }).click();
@@ -102,11 +102,11 @@ test.describe("Layout Management", () => {
       });
       const layout = await createRes.json();
 
-      await adminPage.goto(`${ADMIN_URL}/layouts/${layout._id}/edit`);
+      await adminPage.goto(`${ADMIN_URL}/admin/layouts/${layout._id}/edit`);
 
       await expect(adminPage.locator(".page-header h1")).toContainText("Edit Layout");
 
-      const nameInput = adminPage.getByLabel("Name");
+      const nameInput = adminPage.getByPlaceholder("e.g. My Custom Layout");
       await nameInput.fill(`${layout.name}-updated`);
 
       await adminPage.getByRole("button", { name: "Save Changes" }).click();
@@ -120,7 +120,7 @@ test.describe("Layout Management", () => {
     });
 
     test("quick template populates regions", async ({ adminPage }) => {
-      await adminPage.goto(`${ADMIN_URL}/layouts/new`);
+      await adminPage.goto(`${ADMIN_URL}/admin/layouts/new`);
 
       await adminPage
         .getByRole("button", { name: "Header + Main + Footer" })

@@ -1,5 +1,7 @@
 import { type Locator, type Page, expect } from "@playwright/test";
 
+const ADMIN_URL = process.env.ADMIN_URL ?? "http://localhost:4001";
+
 export class LoginPage {
   readonly page: Page;
   readonly emailInput: Locator;
@@ -10,15 +12,15 @@ export class LoginPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.emailInput = page.getByLabel("Email");
-    this.passwordInput = page.getByLabel("Password");
+    this.emailInput = page.getByPlaceholder("you@example.com");
+    this.passwordInput = page.getByPlaceholder("Your password");
     this.submitButton = page.getByRole("button", { name: "Sign In" });
     this.errorText = page.locator(".error-text");
     this.registerLink = page.getByRole("link", { name: "Create one" });
   }
 
   async goto() {
-    await this.page.goto("/login");
+    await this.page.goto(`${ADMIN_URL}/admin/login`, { waitUntil: "networkidle" });
   }
 
   async login(email: string, password: string) {

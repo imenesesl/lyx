@@ -6,10 +6,10 @@ const ADMIN_URL = process.env.ADMIN_URL ?? "http://localhost:4001";
 test.describe("Application Management", () => {
   test.describe("App List", () => {
     test("shows existing apps", async ({ adminPage, testApp }) => {
-      await adminPage.goto(`${ADMIN_URL}/apps`);
+      await adminPage.goto(`${ADMIN_URL}/admin/apps`);
 
       await expect(adminPage.locator(".page-header h1")).toContainText("Applications");
-      await expect(adminPage.getByText(testApp.name)).toBeVisible();
+      await expect(adminPage.getByText(testApp.name).first()).toBeVisible();
     });
 
     test("empty state when no apps exist", async ({ adminPage, apiContext }) => {
@@ -20,7 +20,7 @@ test.describe("Application Management", () => {
         await apiContext.delete(`/api/apps/${app._id}`);
       }
 
-      await adminPage.goto(`${ADMIN_URL}/apps`);
+      await adminPage.goto(`${ADMIN_URL}/admin/apps`);
 
       await expect(adminPage.locator(".empty-state")).toBeVisible();
       await expect(
@@ -59,13 +59,13 @@ test.describe("Application Management", () => {
     });
 
     test("create app without selecting layout keeps button disabled", async ({ adminPage }) => {
-      await adminPage.goto(`${ADMIN_URL}/apps`);
+      await adminPage.goto(`${ADMIN_URL}/admin/apps`);
 
       await adminPage.getByRole("button", { name: "New Application" }).click();
       const modal = adminPage.locator(".modal-content");
       await expect(modal).toBeVisible();
 
-      await modal.getByLabel("Name").fill("No Layout App");
+      await modal.getByPlaceholder("My Awesome App").fill("No Layout App");
 
       const createBtn = modal.getByRole("button", { name: "Create" });
       await expect(createBtn).toBeDisabled();
@@ -76,17 +76,17 @@ test.describe("Application Management", () => {
 
   test.describe("App Detail", () => {
     test("detail page loads with app name and tabs", async ({ adminPage, testApp }) => {
-      await adminPage.goto(`${ADMIN_URL}/apps/${testApp._id}`);
+      await adminPage.goto(`${ADMIN_URL}/admin/apps/${testApp._id}`);
 
       await expect(adminPage.locator(".page-header h1")).toContainText(testApp.name);
-      await expect(adminPage.getByText("Configuration")).toBeVisible();
-      await expect(adminPage.getByText("Versions")).toBeVisible();
-      await expect(adminPage.getByText("Canary")).toBeVisible();
-      await expect(adminPage.getByText("Settings")).toBeVisible();
+      await expect(adminPage.getByRole("button", { name: "Configuration" })).toBeVisible();
+      await expect(adminPage.getByRole("button", { name: "Versions" })).toBeVisible();
+      await expect(adminPage.getByRole("button", { name: "Canary" })).toBeVisible();
+      await expect(adminPage.getByRole("button", { name: "Settings" })).toBeVisible();
     });
 
     test("detail page shows layout slot assignments", async ({ adminPage, testApp }) => {
-      await adminPage.goto(`${ADMIN_URL}/apps/${testApp._id}`);
+      await adminPage.goto(`${ADMIN_URL}/admin/apps/${testApp._id}`);
 
       await expect(
         adminPage.getByText("Slot Assignments")
@@ -108,7 +108,7 @@ test.describe("Application Management", () => {
         return;
       }
 
-      await adminPage.goto(`${ADMIN_URL}/apps/${testApp._id}`);
+      await adminPage.goto(`${ADMIN_URL}/admin/apps/${testApp._id}`);
 
       const firstSelect = adminPage.locator(".select").first();
       await firstSelect.selectOption({ label: testMfe.name });
@@ -118,9 +118,9 @@ test.describe("Application Management", () => {
     });
 
     test("edit app name and description", async ({ adminPage, testApp }) => {
-      await adminPage.goto(`${ADMIN_URL}/apps/${testApp._id}`);
+      await adminPage.goto(`${ADMIN_URL}/admin/apps/${testApp._id}`);
 
-      await adminPage.getByText("Settings").click();
+      await adminPage.getByRole("button", { name: "Settings" }).click();
       await adminPage.waitForTimeout(300);
 
       const nameInput = adminPage.locator('.card .form-group').filter({ hasText: "Name" }).locator(".input");
@@ -148,8 +148,8 @@ test.describe("Application Management", () => {
       });
       const app = await createRes.json();
 
-      await adminPage.goto(`${ADMIN_URL}/apps/${app._id}`);
-      await adminPage.getByText("Settings").click();
+      await adminPage.goto(`${ADMIN_URL}/admin/apps/${app._id}`);
+      await adminPage.getByRole("button", { name: "Settings" }).click();
       await adminPage.waitForTimeout(300);
 
       adminPage.on("dialog", (dialog) => dialog.accept());
@@ -164,7 +164,7 @@ test.describe("Application Management", () => {
       adminPage,
       testApp,
     }) => {
-      await adminPage.goto(`${ADMIN_URL}/apps/${testApp._id}`);
+      await adminPage.goto(`${ADMIN_URL}/admin/apps/${testApp._id}`);
 
       const previewLink = adminPage.locator('a:has-text("Preview")').first();
       await expect(previewLink).toBeVisible();

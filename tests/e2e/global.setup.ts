@@ -1,4 +1,4 @@
-import { test as setup, expect } from "@playwright/test";
+import { test as setup, expect, type APIRequestContext } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -11,6 +11,28 @@ const TEST_USER = {
   password: "Test1234!",
   name: "E2E Tester",
 };
+
+const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+async function retryRequest(
+  request: APIRequestContext,
+  method: "get" | "post",
+  url: string,
+  opts?: Record<string, unknown>,
+  retries = 4
+) {
+  for (let i = 0; i < retries; i++) {
+    const res =
+      method === "get"
+        ? await request.get(url, opts)
+        : await request.post(url, opts);
+    if (res.status() !== 429) return res;
+    await wait(2000 * (i + 1));
+  }
+  return method === "get"
+    ? await request.get(url, opts)
+    : await request.post(url, opts);
+}
 
 setup("health check", async ({ request }) => {
   const check = async (name: string, url: string) => {
@@ -28,23 +50,29 @@ setup("health check", async ({ request }) => {
   };
 
   await check("Admin API", `${ADMIN_URL}/api/health`);
-  await check("Shell", SHELL_URL);
+  await check("Shell", `${SHELL_URL}/health`);
 });
 
 setup("authenticate", async ({ page }) => {
   let token: string;
 
-  const registerRes = await page.request.post(`${ADMIN_URL}/api/auth/register`, {
-    data: TEST_USER,
-  });
+  const registerRes = await retryRequest(
+    page.request,
+    "post",
+    `${ADMIN_URL}/api/auth/register`,
+    { data: TEST_USER }
+  );
 
   if (registerRes.ok()) {
     const body = await registerRes.json();
     token = body.token;
   } else if (registerRes.status() === 409) {
-    const loginRes = await page.request.post(`${ADMIN_URL}/api/auth/login`, {
-      data: { email: TEST_USER.email, password: TEST_USER.password },
-    });
+    const loginRes = await retryRequest(
+      page.request,
+      "post",
+      `${ADMIN_URL}/api/auth/login`,
+      { data: { email: TEST_USER.email, password: TEST_USER.password } }
+    );
     expect(loginRes.ok()).toBe(true);
     const body = await loginRes.json();
     token = body.token;
@@ -54,14 +82,17 @@ setup("authenticate", async ({ page }) => {
     );
   }
 
-  await page.goto(ADMIN_URL);
-  await page.evaluate((t) => localStorage.setItem("lyx_token", t), token);
+  await page.goto(`${ADMIN_URL}/admin`);
+  await page.evaluate((t: string) => localStorage.setItem("lyx_token", t), token);
 
   fs.mkdirSync(path.dirname(AUTH_FILE), { recursive: true });
   await page.context().storageState({ path: AUTH_FILE });
 
-  const meRes = await page.request.get(`${ADMIN_URL}/api/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const meRes = await retryRequest(
+    page.request,
+    "get",
+    `${ADMIN_URL}/api/auth/me`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
   expect(meRes.ok()).toBe(true);
 });

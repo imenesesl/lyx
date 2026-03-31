@@ -6,21 +6,25 @@ const ADMIN_URL = process.env.ADMIN_URL ?? "http://localhost:4001";
 test.describe("Settings", () => {
   test.describe("Account Info", () => {
     test("settings page shows account name and email", async ({ adminPage }) => {
-      await adminPage.goto(`${ADMIN_URL}/settings`);
+      await adminPage.goto(`${ADMIN_URL}/admin/settings`);
 
       await expect(adminPage.locator(".page-header h1")).toContainText("Settings");
-      await expect(adminPage.getByText("Account")).toBeVisible();
+      await expect(adminPage.getByRole("heading", { name: "Account" })).toBeVisible();
 
       const nameInput = adminPage
         .locator(".card")
         .filter({ hasText: "Account" })
-        .getByLabel("Name");
+        .locator(".form-group")
+        .filter({ hasText: "Name" })
+        .locator(".input");
       await expect(nameInput).not.toBeEmpty();
 
       const emailInput = adminPage
         .locator(".card")
         .filter({ hasText: "Account" })
-        .getByLabel("Email");
+        .locator(".form-group")
+        .filter({ hasText: "Email" })
+        .locator(".input");
       await expect(emailInput).not.toBeEmpty();
     });
   });

@@ -5,7 +5,7 @@ const ADMIN_URL = process.env.ADMIN_URL ?? "http://localhost:4001";
 test.describe("MFE Management", () => {
   test.describe("MFE List", () => {
     test("shows existing MFEs", async ({ adminPage, testMfe }) => {
-      await adminPage.goto(`${ADMIN_URL}/mfes`);
+      await adminPage.goto(`${ADMIN_URL}/admin/mfes`);
 
       await expect(adminPage.locator(".page-header h1")).toContainText("Micro Frontends");
       await expect(adminPage.getByText(testMfe.name)).toBeVisible();
@@ -23,7 +23,7 @@ test.describe("MFE Management", () => {
         }
       }
 
-      await adminPage.goto(`${ADMIN_URL}/mfes`);
+      await adminPage.goto(`${ADMIN_URL}/admin/mfes`);
 
       const emptyState = adminPage.locator(".empty-state");
       if (await emptyState.isVisible()) {
@@ -43,7 +43,7 @@ test.describe("MFE Management", () => {
       adminPage,
       testMfe,
     }) => {
-      await adminPage.goto(`${ADMIN_URL}/mfes/${testMfe._id}`);
+      await adminPage.goto(`${ADMIN_URL}/admin/mfes/${testMfe._id}`);
 
       await expect(adminPage.locator(".page-header h1")).toContainText(testMfe.name);
       await expect(adminPage.getByText("Versions")).toBeVisible();
@@ -57,7 +57,7 @@ test.describe("MFE Management", () => {
       const versionsRes = await apiContext.get(`/api/mfes/${testMfe._id}/versions`);
       const versions = await versionsRes.json();
 
-      await adminPage.goto(`${ADMIN_URL}/mfes/${testMfe._id}`);
+      await adminPage.goto(`${ADMIN_URL}/admin/mfes/${testMfe._id}`);
 
       if (versions.length > 0) {
         await expect(adminPage.getByText("Entry:")).toBeVisible();
@@ -72,7 +72,7 @@ test.describe("MFE Management", () => {
       adminPage,
       testMfe,
     }) => {
-      await adminPage.goto(`${ADMIN_URL}/mfes/${testMfe._id}`);
+      await adminPage.goto(`${ADMIN_URL}/admin/mfes/${testMfe._id}`);
 
       await adminPage.getByRole("button", { name: "Archive" }).click();
       await adminPage.waitForTimeout(500);
@@ -94,7 +94,7 @@ test.describe("MFE Management", () => {
       });
       const mfe = await createRes.json();
 
-      await adminPage.goto(`${ADMIN_URL}/mfes/${mfe._id}`);
+      await adminPage.goto(`${ADMIN_URL}/admin/mfes/${mfe._id}`);
 
       adminPage.on("dialog", (dialog) => dialog.accept());
 
@@ -130,7 +130,7 @@ test.describe("MFE Management", () => {
         });
       }
 
-      await adminPage.goto(`${ADMIN_URL}/mfes/${testMfe._id}`);
+      await adminPage.goto(`${ADMIN_URL}/admin/mfes/${testMfe._id}`);
 
       adminPage.on("dialog", (dialog) => dialog.accept());
 

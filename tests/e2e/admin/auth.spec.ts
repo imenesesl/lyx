@@ -5,27 +5,37 @@ const ADMIN_URL = process.env.ADMIN_URL ?? "http://localhost:4001";
 
 test.describe("Authentication", () => {
   test.describe("Login", () => {
-    test("login with valid credentials navigates to dashboard", async ({ page }) => {
+    test("login with valid credentials navigates to dashboard", async ({ browser }) => {
+      const context = await browser.newContext();
+      const page = await context.newPage();
       const loginPage = new LoginPage(page);
       await loginPage.goto();
 
       await loginPage.login("e2e@test.com", "Test1234!");
 
-      await page.waitForURL("/");
+      await page.waitForURL(/\/admin\/?$/);
       await expect(page.locator(".page-header h1")).toContainText("Overview");
+
+      await context.close();
     });
 
-    test("login with invalid credentials shows error", async ({ page }) => {
+    test("login with invalid credentials shows error", async ({ browser }) => {
+      const context = await browser.newContext();
+      const page = await context.newPage();
       const loginPage = new LoginPage(page);
       await loginPage.goto();
 
       await loginPage.login("wrong@email.com", "WrongPassword!");
 
       await loginPage.expectError("Invalid");
-      await expect(page).toHaveURL(/\/login/);
+      await expect(page).toHaveURL(/\/admin\/login/);
+
+      await context.close();
     });
 
-    test("login with empty fields shows HTML validation", async ({ page }) => {
+    test("login with empty fields shows HTML validation", async ({ browser }) => {
+      const context = await browser.newContext();
+      const page = await context.newPage();
       const loginPage = new LoginPage(page);
       await loginPage.goto();
 
@@ -36,33 +46,43 @@ test.describe("Authentication", () => {
         (el: HTMLInputElement) => !el.validity.valid
       );
       expect(isInvalid).toBe(true);
+
+      await context.close();
     });
   });
 
   test.describe("Registration", () => {
-    test("register new account and redirect to dashboard", async ({ page }) => {
-      await page.goto("/register");
+    test("register new account and redirect to dashboard", async ({ browser }) => {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      await page.goto(`${ADMIN_URL}/admin/register`, { waitUntil: "networkidle" });
 
       const uniqueEmail = `e2e-reg-${Date.now()}@test.com`;
 
-      await page.getByLabel("Name").fill("New User");
-      await page.getByLabel("Email").fill(uniqueEmail);
-      await page.getByLabel("Password").fill("NewPass123!");
+      await page.getByPlaceholder("Your name").fill("New User");
+      await page.getByPlaceholder("you@example.com").fill(uniqueEmail);
+      await page.getByPlaceholder("Minimum 6 characters").fill("NewPass123!");
       await page.getByRole("button", { name: "Create Account" }).click();
 
-      await page.waitForURL("/");
+      await page.waitForURL(/\/admin\/?$/);
       await expect(page.locator(".page-header h1")).toContainText("Overview");
+
+      await context.close();
     });
 
-    test("register with existing email shows error", async ({ page }) => {
-      await page.goto("/register");
+    test("register with existing email shows error", async ({ browser }) => {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      await page.goto(`${ADMIN_URL}/admin/register`, { waitUntil: "networkidle" });
 
-      await page.getByLabel("Name").fill("Duplicate User");
-      await page.getByLabel("Email").fill("e2e@test.com");
-      await page.getByLabel("Password").fill("Test1234!");
+      await page.getByPlaceholder("Your name").fill("Duplicate User");
+      await page.getByPlaceholder("you@example.com").fill("e2e@test.com");
+      await page.getByPlaceholder("Minimum 6 characters").fill("Test1234!");
       await page.getByRole("button", { name: "Create Account" }).click();
 
       await expect(page.locator(".error-text")).toBeVisible();
+
+      await context.close();
     });
   });
 
@@ -71,21 +91,21 @@ test.describe("Authentication", () => {
       const context = await browser.newContext();
       const page = await context.newPage();
 
-      await page.goto(ADMIN_URL);
+      await page.goto(`${ADMIN_URL}/admin`, { waitUntil: "networkidle" });
 
-      await page.waitForURL(/\/login/);
+      await page.waitForURL(/\/admin\/login/);
       await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
 
       await context.close();
     });
 
     test("logout clears session and redirects to login", async ({ adminPage }) => {
-      await adminPage.goto(ADMIN_URL);
+      await adminPage.goto(`${ADMIN_URL}/admin`, { waitUntil: "networkidle" });
       await expect(adminPage.locator(".page-header h1")).toContainText("Overview");
 
       await adminPage.getByRole("button", { name: "Log out" }).click();
 
-      await adminPage.waitForURL(/\/login/);
+      await adminPage.waitForURL(/\/admin\/login/);
       await expect(
         adminPage.getByRole("button", { name: "Sign In" })
       ).toBeVisible();
@@ -95,13 +115,13 @@ test.describe("Authentication", () => {
       const context = await browser.newContext();
       const page = await context.newPage();
 
-      await page.goto(ADMIN_URL);
+      await page.goto(`${ADMIN_URL}/admin`, { waitUntil: "networkidle" });
       await page.evaluate(() =>
         localStorage.setItem("lyx_token", "expired.invalid.token")
       );
 
-      await page.goto(ADMIN_URL);
-      await page.waitForURL(/\/login/);
+      await page.goto(`${ADMIN_URL}/admin`, { waitUntil: "networkidle" });
+      await page.waitForURL(/\/admin\/login/);
       await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
 
       await context.close();

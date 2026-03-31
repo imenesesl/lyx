@@ -37,6 +37,32 @@ export const test = base.extend<Fixtures>({
   adminPage: async ({ browser }, use) => {
     const context = await browser.newContext({ storageState: AUTH_FILE });
     const page = await context.newPage();
+
+    await page.route("**/api/auth/me", async (route) => {
+      for (let i = 0; i < 3; i++) {
+        const response = await route.fetch();
+        if (response.status() !== 429) {
+          await route.fulfill({ response });
+          return;
+        }
+        if (i < 2)
+          await new Promise<void>((r) => setTimeout(r, 1000 * (i + 1)));
+      }
+      const last = await route.fetch();
+      await route.fulfill({ response: last });
+    });
+
+    await page.goto(`${ADMIN_URL}/admin`, { waitUntil: "networkidle" });
+
+    if (page.url().includes("/login")) {
+      const token = readToken();
+      await page.evaluate(
+        (t: string) => localStorage.setItem("lyx_token", t),
+        token
+      );
+      await page.goto(`${ADMIN_URL}/admin`, { waitUntil: "networkidle" });
+    }
+
     await use(page);
     await context.close();
   },

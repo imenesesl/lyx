@@ -1,6 +1,7 @@
 import { test, expect } from "../fixtures/test-fixtures";
 
 const ADMIN_URL = process.env.ADMIN_URL ?? "http://localhost:4001";
+const ADMIN_BASE = `${ADMIN_URL}/admin`;
 
 const SIDEBAR_LINKS = [
   { label: "Overview", path: "/", exact: true },
@@ -14,7 +15,7 @@ const SIDEBAR_LINKS = [
 test.describe("Navigation and Layout", () => {
   test.describe("Sidebar", () => {
     test("sidebar shows all navigation links", async ({ adminPage }) => {
-      await adminPage.goto(ADMIN_URL);
+      await adminPage.goto(ADMIN_BASE);
 
       for (const link of SIDEBAR_LINKS) {
         await expect(
@@ -28,12 +29,12 @@ test.describe("Navigation and Layout", () => {
         test(`${link.label} link navigates to ${link.path}`, async ({
           adminPage,
         }) => {
-          await adminPage.goto(ADMIN_URL);
+          await adminPage.goto(ADMIN_BASE);
 
           await adminPage.locator("nav").getByText(link.label).click();
 
           if (link.exact) {
-            await expect(adminPage).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
+            await expect(adminPage).toHaveURL(new RegExp(`^${ADMIN_BASE}/?$`));
           } else {
             await expect(adminPage).toHaveURL(new RegExp(link.path));
           }
@@ -56,7 +57,7 @@ test.describe("Navigation and Layout", () => {
       ];
 
       for (const route of ROUTES) {
-        await adminPage.goto(`${ADMIN_URL}${route.path}`);
+        await adminPage.goto(`${ADMIN_BASE}${route.path}`);
 
         const headerTitle = adminPage.locator("header h2");
         await expect(headerTitle).toContainText(route.title);
@@ -68,7 +69,7 @@ test.describe("Navigation and Layout", () => {
     test("refresh button reloads data without full page reload", async ({
       adminPage,
     }) => {
-      await adminPage.goto(`${ADMIN_URL}/apps`);
+      await adminPage.goto(`${ADMIN_BASE}/apps`);
       await adminPage.waitForTimeout(500);
 
       const responsePromise = adminPage.waitForResponse(
@@ -89,7 +90,7 @@ test.describe("Navigation and Layout", () => {
     test("page has sidebar, header, and main content", async ({
       adminPage,
     }) => {
-      await adminPage.goto(ADMIN_URL);
+      await adminPage.goto(ADMIN_BASE);
 
       await expect(adminPage.locator("aside")).toBeVisible();
       await expect(adminPage.locator("header")).toBeVisible();
@@ -97,13 +98,13 @@ test.describe("Navigation and Layout", () => {
     });
 
     test("sidebar shows Lyx Admin branding", async ({ adminPage }) => {
-      await adminPage.goto(ADMIN_URL);
+      await adminPage.goto(ADMIN_BASE);
 
       await expect(adminPage.getByText("Lyx Admin")).toBeVisible();
     });
 
     test("sidebar shows logged-in user info", async ({ adminPage }) => {
-      await adminPage.goto(ADMIN_URL);
+      await adminPage.goto(ADMIN_BASE);
 
       await expect(
         adminPage.locator("aside").getByRole("button", { name: "Log out" })
