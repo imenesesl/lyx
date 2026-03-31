@@ -55,6 +55,20 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+const NO_CACHE_FILENAMES = new Set([
+  "remoteEntry.js",
+  "mf-manifest.json",
+  "index.html",
+]);
+
+function getCacheControl(objectName: string): string {
+  const basename = objectName.split("/").pop() ?? "";
+  if (NO_CACHE_FILENAMES.has(basename) || basename.startsWith("localSharedImportMap")) {
+    return "no-cache, no-store, must-revalidate";
+  }
+  return "public, max-age=31536000, immutable";
+}
+
 export async function uploadFile(
   objectName: string,
   buffer: Buffer,
@@ -67,6 +81,7 @@ export async function uploadFile(
       Key: objectName,
       Body: buffer,
       ContentType: contentType,
+      CacheControl: getCacheControl(objectName),
     })
   );
   return getPublicUrl(objectName);

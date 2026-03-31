@@ -94,7 +94,9 @@ async function checkAutoRollback(config: any, rule: ICanaryRule): Promise<boolea
 }
 
 router.use((_req, res, next) => {
-  res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   next();
 });
 

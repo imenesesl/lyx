@@ -24,6 +24,22 @@ const MIME_MAP = {
   ".svg": "image/svg+xml",
 };
 
+const NO_CACHE_FILES = new Set([
+  "remoteEntry.js",
+  "mf-manifest.json",
+  "index.html",
+  "localSharedImportMap",
+]);
+
+function isNoCacheAsset(key) {
+  const basename = key.split("/").pop() ?? "";
+  if (NO_CACHE_FILES.has(basename)) return true;
+  for (const prefix of NO_CACHE_FILES) {
+    if (basename.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
 let s3Client;
 function getS3() {
   if (!s3Client) s3Client = new S3Client({ region: AWS_REGION });
@@ -83,6 +99,9 @@ async function startServer() {
 
   app.use("/storage", async (req, res) => {
     const objectKey = req.path.startsWith("/") ? req.path.slice(1) : req.path;
+    const cacheHeader = isNoCacheAsset(objectKey)
+      ? "no-cache, no-store, must-revalidate"
+      : "public, max-age=31536000, immutable";
 
     if (S3_BUCKET) {
       try {
@@ -93,7 +112,7 @@ async function startServer() {
         const ext = extname(objectKey);
         const ct = MIME_MAP[ext] || s3Res.ContentType || "application/octet-stream";
         res.setHeader("Content-Type", ct);
-        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        res.setHeader("Cache-Control", cacheHeader);
         res.setHeader("Access-Control-Allow-Origin", "*");
         s3Res.Body.transformToWebStream().pipeTo(
           new WritableStream({
@@ -119,7 +138,7 @@ async function startServer() {
         }
         const ct = proxyRes.headers.get("content-type") || "application/octet-stream";
         res.setHeader("Content-Type", ct);
-        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        res.setHeader("Cache-Control", cacheHeader);
         const body = await proxyRes.arrayBuffer();
         res.end(Buffer.from(body));
       } catch (err) {
@@ -149,11 +168,7 @@ async function startServer() {
           res.setHeader(key, value);
         }
       }
-      if (req.originalUrl.startsWith("/api/runtime/")) {
-        res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
-      } else {
-        res.setHeader("Cache-Control", "no-cache");
-      }
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
       const body = await proxyRes.arrayBuffer();
       res.end(Buffer.from(body));
     } catch (err) {

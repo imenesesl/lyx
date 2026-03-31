@@ -73,11 +73,12 @@ function ClientMFESlot({
       const timer = startLoadTimer(target, "unknown", slot);
 
       try {
-        const url = overrideMfe
+        const baseUrl = overrideMfe
           ? `${registryUrl}/mfes/by-name/${overrideMfe}`
           : `${registryUrl}/mfes/slot/${slot}`;
+        const url = `${baseUrl}?_=${Date.now()}`;
 
-        const res = await fetch(url);
+        const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) {
           timer.error(`HTTP ${res.status}`);
           if (!cancelled) {
@@ -246,9 +247,12 @@ export async function loadMFEComponent(
     runtimeInitialized = true;
   }
 
-  const entryUrl = remoteEntry.startsWith("http")
+  const ts = (entry as any).timestamp ?? Date.now();
+  const rawUrl = remoteEntry.startsWith("http")
     ? remoteEntry
     : `${window.location.origin}${remoteEntry}`;
+  const separator = rawUrl.includes("?") ? "&" : "?";
+  const entryUrl = `${rawUrl}${separator}t=${ts}`;
 
   const key = remoteKey(name, version ?? "latest");
 
