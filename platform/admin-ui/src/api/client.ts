@@ -35,10 +35,10 @@ async function request<T>(
     body: isFormData ? (body as FormData) : body ? JSON.stringify(body) : undefined,
   });
 
-  if (res.status === 401) {
+  const isAuthEndpoint = path === "/auth/login" || path === "/auth/register";
+  if (res.status === 401 && !isAuthEndpoint) {
     clearToken();
-    const base = import.meta.env?.BASE_URL ?? "/admin/";
-    window.location.href = `${base}login`;
+    window.location.href = "/admin/login";
     throw new Error("Unauthorized");
   }
 

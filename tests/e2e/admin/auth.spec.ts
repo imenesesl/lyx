@@ -115,13 +115,14 @@ test.describe("Authentication", () => {
       const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
       const page = await context.newPage();
 
-      await page.goto(`${ADMIN_URL}/admin`, { waitUntil: "networkidle" });
+      await page.goto(`${ADMIN_URL}/admin/login`, { waitUntil: "networkidle" });
       await page.evaluate(() =>
         localStorage.setItem("lyx_token", "expired.invalid.token")
       );
 
-      await page.goto(`${ADMIN_URL}/admin`, { waitUntil: "networkidle" });
-      await page.waitForURL(/\/admin\/login/);
+      await page.goto(`${ADMIN_URL}/admin`, { waitUntil: "domcontentloaded" });
+
+      await page.waitForURL(/\/admin\/login/, { timeout: 30000 });
       await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
 
       await context.close();

@@ -107,13 +107,21 @@ test.describe("Layout Management", () => {
       await adminPage.goto(`${ADMIN_URL}/admin/layouts/${layout._id}/edit`);
 
       await expect(adminPage.locator(".page-header h1")).toContainText("Edit Layout");
+      await expect(adminPage.getByText("Regions (2)")).toBeVisible();
 
       const nameInput = adminPage.getByPlaceholder("e.g. My Custom Layout");
       await nameInput.fill(`${layout.name}-updated`);
 
-      await adminPage.getByRole("button", { name: "Save Changes" }).click();
+      const saveBtn = adminPage.getByRole("button", { name: "Save Changes" });
+      await saveBtn.scrollIntoViewIfNeeded();
 
-      await adminPage.waitForURL(/\/admin\/layouts$/);
+      const responsePromise = adminPage.waitForResponse(
+        (r) => r.url().includes("/api/layouts/") && r.request().method() === "PUT"
+      );
+      await saveBtn.click();
+      await responsePromise;
+
+      await adminPage.waitForURL(/\/admin\/layouts$/, { timeout: 15000 });
       await expect(
         adminPage.getByText(`${layout.name}-updated`)
       ).toBeVisible();
