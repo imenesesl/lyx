@@ -66,15 +66,29 @@ jobs:
       - name: Test shell
         run: pnpm nx run @lyx/shell:test
 
+      - name: Check E2E secrets
+        id: e2e-check
+        run: |
+          if [ -n "$ADMIN_URL" ] && [ -n "$SHELL_URL" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "⚠️ ADMIN_URL or SHELL_URL secrets not set — skipping E2E tests"
+          fi
+        env:
+          ADMIN_URL: ${{ secrets.ADMIN_URL }}
+          SHELL_URL: ${{ secrets.SHELL_URL }}
+
       - name: Install Playwright browsers
+        if: steps.e2e-check.outputs.available == 'true'
         run: npx playwright install chromium --with-deps
 
       - name: Run E2E tests (Admin UI + Shell)
+        if: steps.e2e-check.outputs.available == 'true'
         run: pnpm test:e2e
         env:
-          ADMIN_URL: ${{ vars.ADMIN_URL || '' }}
-          SHELL_URL: ${{ vars.SHELL_URL || '' }}
-        if: vars.ADMIN_URL != '' && vars.SHELL_URL != ''
+          ADMIN_URL: ${{ secrets.ADMIN_URL }}
+          SHELL_URL: ${{ secrets.SHELL_URL }}
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
